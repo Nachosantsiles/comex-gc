@@ -1,5 +1,8 @@
-﻿'use client'
+'use client'
 import { useSession } from 'next-auth/react'
+import dynamic from 'next/dynamic'
+
+const AlertsBell = dynamic(() => import('@/components/ui/alerts-bell').then(m => ({ default: m.AlertsBell })), { ssr: false })
 
 interface TopbarProps {
   title: string
@@ -15,13 +18,15 @@ export function Topbar({ title, actions }: TopbarProps) {
     <header className="sticky top-0 z-30 bg-white" style={{ boxShadow: '0 1px 0 #e2e8f0', borderTop: '3px solid #6B1A1A' }}>
       <div className="h-13 flex items-center justify-between px-6 py-3">
         <h1 className="text-base font-bold text-slate-800 tracking-tight">{title}</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {actions && (
             <>
               {actions}
               <div className="w-px h-5 bg-slate-200" />
             </>
           )}
+          <AlertsBell />
+          <div className="w-px h-5 bg-slate-200" />
           <div className="flex items-center gap-2.5">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"

@@ -5,9 +5,12 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Ship, Package, Landmark, FileText,
   TruckIcon, BarChart3, Settings, LogOut, FolderOpen,
-  BarChart2,
+  BarChart2, Calendar,
 } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
+import dynamic from 'next/dynamic'
+
+const MiniCalendar = dynamic(() => import('@/components/ui/mini-calendar').then(m => ({ default: m.MiniCalendar })), { ssr: false })
 
 const sections = [
   {
@@ -129,6 +132,17 @@ export function Sidebar() {
           )
         })}
       </nav>
+
+      {/* Calendar */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="px-3 pt-2.5 pb-0 flex items-center gap-2">
+          <Calendar size={11} style={{ color: 'rgba(148,163,184,0.45)' }} />
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'rgba(148,163,184,0.45)' }}>
+            Calendario
+          </p>
+        </div>
+        <MiniCalendar />
+      </div>
 
       {/* User */}
       <div className="px-3 pb-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
