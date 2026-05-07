@@ -6,7 +6,7 @@ import { getFromR2 } from '@/lib/r2'
 import fs from 'fs'
 import path from 'path'
 
-const UPLOAD_DIR = path.join(process.cwd(), 'data', 'uploads')
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'data', 'uploads')
 
 const mimeMap: Record<string, string> = {
   pdf: 'application/pdf',

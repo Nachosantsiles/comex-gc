@@ -14,7 +14,8 @@ try {
   db.prepare(`ALTER TABLE documentos ADD COLUMN storage TEXT NOT NULL DEFAULT 'local'`).run()
 } catch {}
 
-const UPLOAD_DIR = path.join(process.cwd(), 'data', 'uploads')
+// UPLOAD_DIR env var allows Railway Volume or any custom path
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(process.cwd(), 'data', 'uploads')
 
 export async function GET(req: NextRequest) {
   const session = await auth()
