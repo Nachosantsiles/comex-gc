@@ -53,3 +53,11 @@ body {
 a, button { transition-property: color, background-color, border-color, box-shadow, opacity, transform; transition-duration: 150ms; transition-timing-function: cubic-bezier(0.4,0,0.2,1); }
 
 table { border-collapse: collapse; width: 100%; }
+
+/* Calendar layout utilities not yet picked up by Tailwind scanner */
+@layer utilities {
+  .grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  @media (min-width: 1024px) {
+    .lg\:col-span-2 { grid-column: span 2 / span 2; }
+  }
+}

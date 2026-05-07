@@ -90,7 +90,7 @@ export function ItemCostBarChart({ data }: { data: any[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
         <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
         <YAxis type="category" dataKey="id_item" tick={{ fontSize: 11 }} width={72} axisLine={false} tickLine={false} />
-        <Tooltip formatter={(v: any, name: string) => [fmt(v), name]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+        <Tooltip formatter={(v: any, name: any) => [fmt(v), name]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} />
         <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
         <Bar dataKey="mercaderia_usd" name="Mercad." stackId="a" fill="#4f46e5" />
         <Bar dataKey="comision_sf_usd" name="Comis. SF" stackId="a" fill="#7c3aed" />
@@ -115,7 +115,7 @@ export function ItemTimeBarChart({ data }: { data: any[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
         <XAxis type="number" tick={{ fontSize: 11 }} unit="d" axisLine={false} tickLine={false} />
         <YAxis type="category" dataKey="id_item" tick={{ fontSize: 11 }} width={72} axisLine={false} tickLine={false} />
-        <Tooltip formatter={(v: any, name: string) => [`${v} días`, name]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+        <Tooltip formatter={(v: any, name: any) => [`${v} días`, name]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} />
         <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
         <Bar dataKey="dias_transito" name="Tránsito" fill="#3b82f6" radius={[0, 2, 2, 0]} />
         <Bar dataKey="dias_aduana" name="Aduana" fill="#f59e0b" radius={[0, 2, 2, 0]} />
@@ -138,7 +138,7 @@ export function EnvioCostBarChart({ data }: { data: any[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
         <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
         <YAxis type="category" dataKey="id_envio" tick={{ fontSize: 11 }} width={72} axisLine={false} tickLine={false} />
-        <Tooltip formatter={(v: any, name: string) => [fmt(v), name]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+        <Tooltip formatter={(v: any, name: any) => [fmt(v), name]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} />
         <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
         <Bar dataKey="total_sf_usd" name="Mercad. + SF" stackId="a" fill="#4f46e5" />
         <Bar dataKey="total_gi_usd" name="GI (tributos)" stackId="a" fill="#d97706" />
@@ -161,7 +161,7 @@ export function EnvioTimeBarChart({ data }: { data: any[] }) {
         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
         <XAxis type="number" tick={{ fontSize: 11 }} unit="d" axisLine={false} tickLine={false} />
         <YAxis type="category" dataKey="id_envio" tick={{ fontSize: 11 }} width={72} axisLine={false} tickLine={false} />
-        <Tooltip formatter={(v: any, name: string) => [`${v} días`, name]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+        <Tooltip formatter={(v: any, name: any) => [`${v} días`, name]} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }} />
         <Legend iconType="circle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
         <Bar dataKey="dias_transito" name="Tránsito" fill="#3b82f6" radius={[0, 2, 2, 0]} />
         <Bar dataKey="dias_aduana_avg" name="Aduana avg" fill="#f59e0b" radius={[0, 2, 2, 0]} />

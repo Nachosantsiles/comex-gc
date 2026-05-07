@@ -8,36 +8,34 @@ import {
   BarChart2, Calendar,
 } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
-import dynamic from 'next/dynamic'
-
-const MiniCalendar = dynamic(() => import('@/components/ui/mini-calendar').then(m => ({ default: m.MiniCalendar })), { ssr: false })
 
 const sections = [
   {
     label: 'Operaciones',
     color: { primary: '#5C7A1E', light: '#7DA028', bg: 'rgba(92,122,30,0.30), rgba(92,122,30,0.08)' },
     items: [
-      { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/envios', label: 'Envíos', icon: Ship },
-      { href: '/items', label: 'Ítems', icon: Package },
+      { href: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
+      { href: '/envios',      label: 'Envíos',       icon: Ship },
+      { href: '/items',       label: 'Ítems',        icon: Package },
+      { href: '/calendario',  label: 'Calendario',   icon: Calendar },
     ],
   },
   {
     label: 'Aduana & Costos',
     color: { primary: '#1d6fa4', light: '#3b9fd4', bg: 'rgba(29,111,164,0.28), rgba(29,111,164,0.07)' },
     items: [
-      { href: '/aduana', label: 'Aduana', icon: Landmark },
-      { href: '/detalle', label: 'Detalle + GI', icon: FileText },
-      { href: '/gastos', label: 'Gastos Logísticos', icon: TruckIcon },
+      { href: '/aduana',  label: 'Aduana',           icon: Landmark },
+      { href: '/detalle', label: 'Detalle + GI',     icon: FileText },
+      { href: '/gastos',  label: 'Gastos Logísticos',icon: TruckIcon },
     ],
   },
   {
     label: 'Análisis',
     color: { primary: '#1A6B52', light: '#27967A', bg: 'rgba(26,107,82,0.28), rgba(26,107,82,0.07)' },
     items: [
-      { href: '/totales', label: 'Total x Ítem', icon: BarChart3 },
-      { href: '/reportes', label: 'Reportes', icon: BarChart2 },
-      { href: '/documentos', label: 'Documentos', icon: FolderOpen },
+      { href: '/totales',    label: 'Total x Ítem', icon: BarChart3 },
+      { href: '/reportes',   label: 'Reportes',     icon: BarChart2 },
+      { href: '/documentos', label: 'Documentos',   icon: FolderOpen },
     ],
   },
   {
@@ -55,7 +53,6 @@ export function Sidebar() {
   const user = session?.user as any
   const initial = user?.name?.[0]?.toUpperCase() ?? 'U'
 
-  // Determine current section accent for user avatar
   const currentSection = sections.find(s => s.items.some(i => pathname.startsWith(i.href)))
   const avatarColor = currentSection?.color ?? sections[0].color
 
@@ -72,10 +69,7 @@ export function Sidebar() {
         <div className="flex items-center gap-3">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{
-              background: 'linear-gradient(135deg, #7DA028, #5C7A1E)',
-              boxShadow: '0 2px 8px rgba(92,122,30,0.45)',
-            }}
+            style={{ background: 'linear-gradient(135deg, #7DA028, #5C7A1E)', boxShadow: '0 2px 8px rgba(92,122,30,0.45)' }}
           >
             <Ship size={15} className="text-white" strokeWidth={2.5} />
           </div>
@@ -92,10 +86,7 @@ export function Sidebar() {
           const { color } = section
           return (
             <div key={section.label}>
-              <p
-                className="text-[10px] font-bold uppercase tracking-[0.12em] px-3 mb-2"
-                style={{ color: 'rgba(148,163,184,0.45)' }}
-              >
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] px-3 mb-2" style={{ color: 'rgba(148,163,184,0.45)' }}>
                 {section.label}
               </p>
               <div className="space-y-0.5">
@@ -113,9 +104,7 @@ export function Sidebar() {
                         background: `linear-gradient(90deg, ${color.bg})`,
                         borderLeft: `2px solid ${color.primary}`,
                         paddingLeft: '10px',
-                      } : {
-                        borderLeft: '2px solid transparent',
-                      }}
+                      } : { borderLeft: '2px solid transparent' }}
                     >
                       <Icon
                         size={16}
@@ -132,17 +121,6 @@ export function Sidebar() {
           )
         })}
       </nav>
-
-      {/* Calendar */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <div className="px-3 pt-2.5 pb-0 flex items-center gap-2">
-          <Calendar size={11} style={{ color: 'rgba(148,163,184,0.45)' }} />
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em]" style={{ color: 'rgba(148,163,184,0.45)' }}>
-            Calendario
-          </p>
-        </div>
-        <MiniCalendar />
-      </div>
 
       {/* User */}
       <div className="px-3 pb-4 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>

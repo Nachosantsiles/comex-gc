@@ -40,7 +40,7 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     buffer = fs.readFileSync(filePath)
   }
 
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     headers: {
       'Content-Type': contentType,
       'Content-Disposition': `inline; filename="${doc.nombre_original}"`,
