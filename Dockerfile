@@ -6,7 +6,7 @@ RUN apk add --no-cache python3 make g++ libc6-compat
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+RUN NODE_ENV=development npm install --legacy-peer-deps
 
 COPY . .
 RUN npm run build
