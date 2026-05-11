@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
 export async function proxy(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET })
+  const secureCookie = req.nextUrl.protocol === 'https:' || process.env.NODE_ENV === 'production'
+  const token = await getToken({ req, secret: process.env.AUTH_SECRET, secureCookie })
   const isAuth = !!token
   const isLoginPage = req.nextUrl.pathname.startsWith('/login')
 
