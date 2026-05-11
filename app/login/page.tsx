@@ -16,12 +16,17 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const res = await signIn('credentials', { email, password, redirect: false })
-    setLoading(false)
-    if (res?.error) {
-      setError('Email o contraseña incorrectos')
-    } else {
-      router.push('/dashboard')
+    try {
+      const res = await signIn('credentials', { email, password, redirect: false })
+      setLoading(false)
+      if (res?.error || res?.ok === false) {
+        setError('Email o contraseña incorrectos')
+      } else {
+        router.push('/dashboard')
+      }
+    } catch (err: any) {
+      setLoading(false)
+      setError('Error del servidor: ' + (err?.message ?? 'Intentá de nuevo'))
     }
   }
 
