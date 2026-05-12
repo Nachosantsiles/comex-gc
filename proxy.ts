@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { ROUTE_PERMISSION_MAP, findFirstAccessibleRoute } from './lib/permissions'
 
+/** Delete all possible NextAuth session cookie variants from a response */
+function clearSessionCookies(res: NextResponse) {
+  const names = [
+    '__Secure-authjs.session-token',
+    'authjs.session-token',
+    '__Secure-next-auth.session-token',
+    'next-auth.session-token',
+  ]
+  for (const name of names) {
+    // Must include secure:true for __Secure- prefixed cookies to be accepted by browser
+    res.cookies.set({ name, value: '', expires: new Date(0), path: '/', httpOnly: true, secure: true, sameSite: 'lax' })
+  }
+}
+
 export async function proxy(req: NextRequest) {
   const secureCookie = req.nextUrl.protocol === 'https:' || process.env.NODE_ENV === 'production'
   const token = await getToken({ req, secret: process.env.AUTH_SECRET, secureCookie })
@@ -12,9 +26,11 @@ export async function proxy(req: NextRequest) {
   if (isLoginPage) {
     if (isAuth) {
       const rawPermissions = (token as any).permissions
-      // Old token without RBAC data → clear session so user can log in fresh
       if (rawPermissions === undefined) {
-        return NextResponse.redirect(new URL('/api/session-reset', req.url))
+        // Old token (pre-RBAC): show login page AND clear stale cookie in one shot
+        const res = NextResponse.next()
+        clearSessionCookies(res)
+        return res
       }
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
@@ -27,9 +43,11 @@ export async function proxy(req: NextRequest) {
 
   const rawPermissions = (token as any).permissions
 
-  // Old token without RBAC data → clear session
   if (rawPermissions === undefined) {
-    return NextResponse.redirect(new URL('/api/session-reset', req.url))
+    // Old token on protected route: redirect to login and clear cookie
+    const res = NextResponse.redirect(new URL('/login', req.url))
+    clearSessionCookies(res)
+    return res
   }
 
   const permissions: string[] = rawPermissions
@@ -39,7 +57,9 @@ export async function proxy(req: NextRequest) {
       if (!permissions.includes(requiredPerm)) {
         const fallback = findFirstAccessibleRoute(permissions)
         if (fallback === '/login') {
-          return NextResponse.redirect(new URL('/api/session-reset', req.url))
+          const res = NextResponse.redirect(new URL('/login', req.url))
+          clearSessionCookies(res)
+          return res
         }
         if (fallback !== pathname) {
           return NextResponse.redirect(new URL(fallback, req.url))
@@ -53,6 +73,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Exclude: Next.js internals, auth endpoints, diagnostic endpoints, session-reset
   matcher: ['/((?!_next/static|_next/image|favicon.ico|api/auth|api/health|api/debug-auth|api/session-reset).*)'],
 }
