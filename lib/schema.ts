@@ -1,6 +1,10 @@
 import db from './db'
 
+let _initialized = false
+
 export function initializeDatabase() {
+  if (_initialized) return
+  _initialized = true
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

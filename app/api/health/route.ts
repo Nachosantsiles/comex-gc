@@ -8,13 +8,16 @@ export async function GET() {
   // ── 1. Environment variables ─────────────────────────────────────────────
   const authSecret = process.env.AUTH_SECRET
   const nextauthSecret = process.env.NEXTAUTH_SECRET
+  const authUrl = process.env.AUTH_URL
   checks.env = {
     AUTH_SECRET: authSecret ? `set (${authSecret.length} chars)` : 'MISSING ❌',
+    AUTH_URL: authUrl ? authUrl : 'MISSING ❌ (required for login CSRF)',
     NEXTAUTH_SECRET: nextauthSecret ? 'set (legacy, ignored in v5)' : 'not set',
     DATABASE_PATH: process.env.DATABASE_PATH ?? 'default (cwd/data/comex.db)',
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT,
   }
+  if (!authUrl) allOk = false
   if (!authSecret) allOk = false
 
   // ── 2. Database connectivity ─────────────────────────────────────────────
