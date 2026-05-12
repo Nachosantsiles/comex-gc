@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-/**
- * GET /api/session-reset
- * Clears all NextAuth session cookies (including __Secure- prefixed)
- * and redirects to /login for a fresh login.
- */
 export async function GET(req: NextRequest) {
   const isSecure = req.nextUrl.protocol === 'https:'
-  const res = NextResponse.redirect(new URL('/login', req.url))
+
+  // Use public URL from env — Railway's internal req.url uses localhost
+  const publicOrigin =
+    process.env.AUTH_URL?.replace(/\/$/, '') ??
+    process.env.NEXTAUTH_URL?.replace(/\/$/, '') ??
+    req.nextUrl.origin
+
+  const res = NextResponse.redirect(`${publicOrigin}/login`)
 
   const cookieNames = [
     '__Secure-authjs.session-token',
