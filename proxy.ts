@@ -10,7 +10,17 @@ export async function proxy(req: NextRequest) {
   const isLoginPage = pathname.startsWith('/login')
 
   if (isLoginPage) {
-    if (isAuth) return NextResponse.redirect(new URL('/dashboard', req.url))
+    if (isAuth) {
+      const rawPermissions = (token as any).permissions
+      // Old token without RBAC data → clear session and let them log in fresh
+      if (rawPermissions === undefined) {
+        const res = NextResponse.redirect(new URL('/login', req.url))
+        res.cookies.delete('__Secure-authjs.session-token')
+        res.cookies.delete('authjs.session-token')
+        return res
+      }
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
     return NextResponse.next()
   }
 
@@ -19,17 +29,29 @@ export async function proxy(req: NextRequest) {
   }
 
   // Route-level permission check from JWT (Edge-compatible — no DB access)
-  const permissions: string[] = (token as any).permissions ?? []
+  const rawPermissions = (token as any).permissions
+
+  // Old token without RBAC data → clear session and redirect to login
+  if (rawPermissions === undefined) {
+    const res = NextResponse.redirect(new URL('/login', req.url))
+    res.cookies.delete('__Secure-authjs.session-token')
+    res.cookies.delete('authjs.session-token')
+    return res
+  }
+
+  const permissions: string[] = rawPermissions
 
   for (const [route, requiredPerm] of Object.entries(ROUTE_PERMISSION_MAP)) {
     if (pathname === route || pathname.startsWith(route + '/')) {
       if (!permissions.includes(requiredPerm)) {
-        // Redirect to first accessible route to avoid loops
         const fallback = findFirstAccessibleRoute(permissions)
+        // No accessible routes → clear session to avoid loops
         if (fallback === '/login') {
-          return NextResponse.redirect(new URL('/login', req.url))
+          const res = NextResponse.redirect(new URL('/login', req.url))
+          res.cookies.delete('__Secure-authjs.session-token')
+          res.cookies.delete('authjs.session-token')
+          return res
         }
-        // Don't redirect if the fallback is the same as current path (would loop)
         if (fallback !== pathname) {
           return NextResponse.redirect(new URL(fallback, req.url))
         }
