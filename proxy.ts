@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { ROUTE_PERMISSION_MAP, findFirstAccessibleRoute } from './lib/permissions'
 
+const CLEAR_SESSION_URL = '/api/auth/clear-session?callbackUrl=/login'
+
 export async function proxy(req: NextRequest) {
   const secureCookie = req.nextUrl.protocol === 'https:' || process.env.NODE_ENV === 'production'
   const token = await getToken({ req, secret: process.env.AUTH_SECRET, secureCookie })
@@ -9,15 +11,17 @@ export async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname
   const isLoginPage = pathname.startsWith('/login')
 
+  // Avoid redirect loops on the clear-session route itself
+  if (pathname.startsWith('/api/auth/clear-session')) {
+    return NextResponse.next()
+  }
+
   if (isLoginPage) {
     if (isAuth) {
       const rawPermissions = (token as any).permissions
-      // Old token without RBAC data → clear session and let them log in fresh
+      // Old token without RBAC data → clear session so user can log in fresh
       if (rawPermissions === undefined) {
-        const res = NextResponse.redirect(new URL('/login', req.url))
-        res.cookies.delete('__Secure-authjs.session-token')
-        res.cookies.delete('authjs.session-token')
-        return res
+        return NextResponse.redirect(new URL(CLEAR_SESSION_URL, req.url))
       }
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
@@ -31,12 +35,9 @@ export async function proxy(req: NextRequest) {
   // Route-level permission check from JWT (Edge-compatible — no DB access)
   const rawPermissions = (token as any).permissions
 
-  // Old token without RBAC data → clear session and redirect to login
+  // Old token without RBAC data → clear session
   if (rawPermissions === undefined) {
-    const res = NextResponse.redirect(new URL('/login', req.url))
-    res.cookies.delete('__Secure-authjs.session-token')
-    res.cookies.delete('authjs.session-token')
-    return res
+    return NextResponse.redirect(new URL(CLEAR_SESSION_URL, req.url))
   }
 
   const permissions: string[] = rawPermissions
@@ -47,10 +48,7 @@ export async function proxy(req: NextRequest) {
         const fallback = findFirstAccessibleRoute(permissions)
         // No accessible routes → clear session to avoid loops
         if (fallback === '/login') {
-          const res = NextResponse.redirect(new URL('/login', req.url))
-          res.cookies.delete('__Secure-authjs.session-token')
-          res.cookies.delete('authjs.session-token')
-          return res
+          return NextResponse.redirect(new URL(CLEAR_SESSION_URL, req.url))
         }
         if (fallback !== pathname) {
           return NextResponse.redirect(new URL(fallback, req.url))
