@@ -1,7 +1,7 @@
-FROM node:22-alpine
+FROM node:22-slim
 
-# Build deps for better-sqlite3 native module
-RUN apk add --no-cache python3 make g++ libc6-compat
+# Build deps for better-sqlite3 (prebuilts available for glibc/Debian, much faster)
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
