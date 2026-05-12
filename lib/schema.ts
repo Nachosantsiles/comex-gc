@@ -277,6 +277,18 @@ export function initializeDatabase() {
     );
   `)
 
+  // user_permissions table for per-user permission overrides
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_permissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      permission TEXT NOT NULL,
+      granted INTEGER NOT NULL DEFAULT 1 CHECK(granted IN (0, 1)),
+      UNIQUE(user_id, permission)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_perms_uid ON user_permissions(user_id);
+  `)
+
   // Migrate existing tables: add columns if they don't exist
   const migrations = [
     `ALTER TABLE envios ADD COLUMN cerrado INTEGER NOT NULL DEFAULT 0`,
@@ -285,10 +297,36 @@ export function initializeDatabase() {
     `ALTER TABLE gastos_logisticos ADD COLUMN criterio_distribucion TEXT DEFAULT 'volumen'`,
     `ALTER TABLE items ADD COLUMN tipo_importacion TEXT`,
     `ALTER TABLE items ADD COLUMN categoria TEXT`,
+    // RBAC: perm_version tracks when permissions change so JWT can detect staleness
+    `ALTER TABLE users ADD COLUMN perm_version INTEGER NOT NULL DEFAULT 1`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch (_) {}
   }
+
+  // Migrate users table to support new roles (supervisor, operador, cliente)
+  // SQLite doesn't allow ALTER COLUMN, so recreate if the old CHECK constraint is present
+  try {
+    const hasPV = (db.prepare("SELECT COUNT(*) as n FROM pragma_table_info('users') WHERE name='perm_version'").get() as any).n
+    if (hasPV === 0) {
+      db.exec(`
+        CREATE TABLE users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin','supervisor','operador','cliente','editor','viewer')),
+          active INTEGER NOT NULL DEFAULT 1,
+          perm_version INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        INSERT INTO users_new(id, name, email, password_hash, role, active, perm_version, created_at)
+          SELECT id, name, email, password_hash, role, active, 1, created_at FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_new RENAME TO users;
+      `)
+    }
+  } catch (_) {}
 
   const insertContainer = db.prepare(
     `INSERT OR IGNORE INTO container_types(id, nombre, peso_max_kg, volumen_max_m3) VALUES (?,?,?,?)`

@@ -8,41 +8,42 @@ import {
   BarChart2, Calendar,
 } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
+import type { Permission } from '@/lib/permissions'
 
 const sections = [
   {
     label: 'Operaciones',
     color: { primary: '#5C7A1E', light: '#7DA028', bg: 'rgba(92,122,30,0.30), rgba(92,122,30,0.08)' },
     items: [
-      { href: '/dashboard',   label: 'Dashboard',   icon: LayoutDashboard },
-      { href: '/envios',      label: 'Envíos',       icon: Ship },
-      { href: '/items',       label: 'Ítems',        icon: Package },
-      { href: '/calendario',  label: 'Calendario',   icon: Calendar },
+      { href: '/dashboard',  label: 'Dashboard',   icon: LayoutDashboard, permission: 'dashboard:view' as Permission },
+      { href: '/envios',     label: 'Envíos',       icon: Ship,            permission: 'envios:view' as Permission },
+      { href: '/items',      label: 'Ítems',        icon: Package,         permission: 'items:view' as Permission },
+      { href: '/calendario', label: 'Calendario',   icon: Calendar,        permission: 'calendario:view' as Permission },
     ],
   },
   {
     label: 'Aduana & Costos',
     color: { primary: '#1d6fa4', light: '#3b9fd4', bg: 'rgba(29,111,164,0.28), rgba(29,111,164,0.07)' },
     items: [
-      { href: '/aduana',  label: 'Aduana',           icon: Landmark },
-      { href: '/detalle', label: 'Detalle + GI',     icon: FileText },
-      { href: '/gastos',  label: 'Gastos Logísticos',icon: TruckIcon },
+      { href: '/aduana',  label: 'Aduana',            icon: Landmark,  permission: 'aduana:view' as Permission },
+      { href: '/detalle', label: 'Detalle + GI',      icon: FileText,  permission: 'detalle:view' as Permission },
+      { href: '/gastos',  label: 'Gastos Logísticos', icon: TruckIcon, permission: 'gastos:view' as Permission },
     ],
   },
   {
     label: 'Análisis',
     color: { primary: '#1A6B52', light: '#27967A', bg: 'rgba(26,107,82,0.28), rgba(26,107,82,0.07)' },
     items: [
-      { href: '/totales',    label: 'Total x Ítem', icon: BarChart3 },
-      { href: '/reportes',   label: 'Reportes',     icon: BarChart2 },
-      { href: '/documentos', label: 'Documentos',   icon: FolderOpen },
+      { href: '/totales',    label: 'Total x Ítem', icon: BarChart3, permission: 'totales:view' as Permission },
+      { href: '/reportes',   label: 'Reportes',     icon: BarChart2, permission: 'reportes:view' as Permission },
+      { href: '/documentos', label: 'Documentos',   icon: FolderOpen, permission: 'documentos:view' as Permission },
     ],
   },
   {
     label: 'Sistema',
     color: { primary: '#5C7A1E', light: '#7DA028', bg: 'rgba(92,122,30,0.30), rgba(92,122,30,0.08)' },
     items: [
-      { href: '/admin', label: 'Administración', icon: Settings },
+      { href: '/admin', label: 'Administración', icon: Settings, permission: 'admin:view' as Permission },
     ],
   },
 ]
@@ -51,9 +52,18 @@ export function Sidebar() {
   const pathname = usePathname()
   const { data: session } = useSession()
   const user = session?.user as any
+  const permissions: string[] = user?.permissions ?? []
   const initial = user?.name?.[0]?.toUpperCase() ?? 'U'
 
-  const currentSection = sections.find(s => s.items.some(i => pathname.startsWith(i.href)))
+  // Filter sections to only show items the user can access
+  const visibleSections = sections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => permissions.includes(item.permission)),
+    }))
+    .filter(section => section.items.length > 0)
+
+  const currentSection = visibleSections.find(s => s.items.some(i => pathname.startsWith(i.href)))
   const avatarColor = currentSection?.color ?? sections[0].color
 
   return (
@@ -82,7 +92,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5 sidebar-scroll">
-        {sections.map((section) => {
+        {visibleSections.map((section) => {
           const { color } = section
           return (
             <div key={section.label}>
