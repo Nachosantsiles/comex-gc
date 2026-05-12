@@ -7,7 +7,7 @@ export function initializeDatabase() {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin','editor','viewer')),
+      role TEXT NOT NULL DEFAULT 'viewer',
       active INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -277,7 +277,60 @@ export function initializeDatabase() {
     );
   `)
 
-  // user_permissions table for per-user permission overrides
+  // Migrate existing tables: add columns if they don't exist
+  const migrations = [
+    `ALTER TABLE envios ADD COLUMN cerrado INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE detalle_compras ADD COLUMN moneda_sf TEXT DEFAULT 'EUR'`,
+    `ALTER TABLE detalle_compras ADD COLUMN tc_sf_a_usd REAL DEFAULT 1`,
+    `ALTER TABLE gastos_logisticos ADD COLUMN criterio_distribucion TEXT DEFAULT 'volumen'`,
+    `ALTER TABLE items ADD COLUMN tipo_importacion TEXT`,
+    `ALTER TABLE items ADD COLUMN categoria TEXT`,
+    // RBAC: perm_version column for JWT staleness detection
+    `ALTER TABLE users ADD COLUMN perm_version INTEGER NOT NULL DEFAULT 1`,
+  ]
+  for (const sql of migrations) {
+    try { db.exec(sql) } catch (_) {}
+  }
+
+  // Migrate users table: add perm_version and drop old role CHECK constraint
+  // Must run BEFORE creating user_permissions (which references users)
+  try {
+    const tableSql = (db.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='users'"
+    ).get() as any)?.sql ?? ''
+    const needsMigration = tableSql.includes("CHECK(role IN ('admin','editor','viewer'))")
+      || (!tableSql.includes('perm_version') && !tableSql.includes('supervisor'))
+
+    if (needsMigration) {
+      db.pragma('foreign_keys = OFF')
+      try {
+        db.exec(`
+          DROP TABLE IF EXISTS users_new;
+          CREATE TABLE users_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'viewer',
+            active INTEGER NOT NULL DEFAULT 1,
+            perm_version INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+          );
+          INSERT INTO users_new(id, name, email, password_hash, role, active, perm_version, created_at)
+            SELECT id, name, email, password_hash, role, active,
+                   COALESCE(perm_version, 1), created_at FROM users;
+          DROP TABLE users;
+          ALTER TABLE users_new RENAME TO users;
+        `)
+      } finally {
+        db.pragma('foreign_keys = ON')
+      }
+    }
+  } catch (_) {
+    try { db.pragma('foreign_keys = ON') } catch (_) {}
+  }
+
+  // user_permissions — created AFTER users migration so FK is valid
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_permissions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -288,45 +341,6 @@ export function initializeDatabase() {
     );
     CREATE INDEX IF NOT EXISTS idx_user_perms_uid ON user_permissions(user_id);
   `)
-
-  // Migrate existing tables: add columns if they don't exist
-  const migrations = [
-    `ALTER TABLE envios ADD COLUMN cerrado INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE detalle_compras ADD COLUMN moneda_sf TEXT DEFAULT 'EUR'`,
-    `ALTER TABLE detalle_compras ADD COLUMN tc_sf_a_usd REAL DEFAULT 1`,
-    `ALTER TABLE gastos_logisticos ADD COLUMN criterio_distribucion TEXT DEFAULT 'volumen'`,
-    `ALTER TABLE items ADD COLUMN tipo_importacion TEXT`,
-    `ALTER TABLE items ADD COLUMN categoria TEXT`,
-    // RBAC: perm_version tracks when permissions change so JWT can detect staleness
-    `ALTER TABLE users ADD COLUMN perm_version INTEGER NOT NULL DEFAULT 1`,
-  ]
-  for (const sql of migrations) {
-    try { db.exec(sql) } catch (_) {}
-  }
-
-  // Migrate users table to support new roles (supervisor, operador, cliente)
-  // SQLite doesn't allow ALTER COLUMN, so recreate if the old CHECK constraint is present
-  try {
-    const hasPV = (db.prepare("SELECT COUNT(*) as n FROM pragma_table_info('users') WHERE name='perm_version'").get() as any).n
-    if (hasPV === 0) {
-      db.exec(`
-        CREATE TABLE users_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          email TEXT UNIQUE NOT NULL,
-          password_hash TEXT NOT NULL,
-          role TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin','supervisor','operador','cliente','editor','viewer')),
-          active INTEGER NOT NULL DEFAULT 1,
-          perm_version INTEGER NOT NULL DEFAULT 1,
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-        INSERT INTO users_new(id, name, email, password_hash, role, active, perm_version, created_at)
-          SELECT id, name, email, password_hash, role, active, 1, created_at FROM users;
-        DROP TABLE users;
-        ALTER TABLE users_new RENAME TO users;
-      `)
-    }
-  } catch (_) {}
 
   const insertContainer = db.prepare(
     `INSERT OR IGNORE INTO container_types(id, nombre, peso_max_kg, volumen_max_m3) VALUES (?,?,?,?)`
