@@ -14,12 +14,12 @@ import { ESTADOS_DOC, ESTADOS_ITEM, MONEDAS, DESTINOS_FINALES, TIPOS_IMPORTACION
 import { fmtDate } from '@/lib/utils'
 
 export const docVariant: Record<string, any> = {
-  Pendiente: 'secondary', 'En Preparación': 'default', 'En Revisión': 'warning',
-  Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'default', Finalizado: 'success',
+  Pendiente: 'secondary', 'En Preparación': 'blue', 'En Revisión': 'warning',
+  Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'teal', Finalizado: 'success',
 }
 export const estadoVariant: Record<string, any> = {
-  'Depósito Origen': 'secondary', 'Puerto Origen': 'default', 'En tránsito': 'warning',
-  'Puerto Destino': 'default', 'Zona Primaria LR': 'orange', 'Depósito Fiscal': 'success',
+  'Depósito Origen': 'secondary', 'Puerto Origen': 'indigo', 'En tránsito': 'warning',
+  'Puerto Destino': 'purple', 'Zona Primaria LR': 'orange', 'Depósito Fiscal': 'success',
 }
 
 const empty = {

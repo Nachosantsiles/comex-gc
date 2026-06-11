@@ -39,12 +39,12 @@ const TIPO_ICON: Record<string, string> = {
 }
 
 const docVariant: Record<string, any> = {
-  Pendiente: 'secondary', 'En Preparación': 'default', 'En Revisión': 'warning',
-  Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'default', Finalizado: 'success',
+  Pendiente: 'secondary', 'En Preparación': 'blue', 'En Revisión': 'warning',
+  Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'teal', Finalizado: 'success',
 }
 const estadoVariant: Record<string, any> = {
-  'Depósito Origen': 'secondary', 'Puerto Origen': 'default', 'En tránsito': 'warning',
-  'Puerto Destino': 'default', 'Zona Primaria LR': 'orange', 'Depósito Fiscal': 'success',
+  'Depósito Origen': 'secondary', 'Puerto Origen': 'indigo', 'En tránsito': 'warning',
+  'Puerto Destino': 'purple', 'Zona Primaria LR': 'orange', 'Depósito Fiscal': 'success',
 }
 
 // InlineStatusBadge → now using shared InlineStatusBadge with portal from @/components/ui/inline-status-badge
