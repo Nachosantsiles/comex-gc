@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Topbar } from '@/components/layout/topbar'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,15 +8,16 @@ import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
-import { Plus, Pencil, Trash2, CheckSquare, Square, ChevronDown, ChevronRight } from 'lucide-react'
+import { InlineStatusBadge } from '@/components/ui/inline-status-badge'
+import { Plus, Pencil, Trash2, CheckSquare, Square, ChevronDown } from 'lucide-react'
 import { ESTADOS_DOC, ESTADOS_ITEM, MONEDAS, DESTINOS_FINALES, TIPOS_IMPORTACION, TIPO_IMP_CONFIG } from '@/lib/constants'
 import { fmtDate } from '@/lib/utils'
 
-const docVariant: Record<string, any> = {
+export const docVariant: Record<string, any> = {
   Pendiente: 'secondary', 'En Preparación': 'default', 'En Revisión': 'warning',
   Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'default', Finalizado: 'success',
 }
-const estadoVariant: Record<string, any> = {
+export const estadoVariant: Record<string, any> = {
   'Depósito Origen': 'secondary', 'Puerto Origen': 'default', 'En tránsito': 'warning',
   'Puerto Destino': 'default', 'Zona Primaria LR': 'orange', 'Depósito Fiscal': 'success',
 }
@@ -25,60 +26,6 @@ const empty = {
   id_envio: '', detalle: '', shipper: '', consignee: '', nro_factura: '',
   valor_total_factura: '', moneda: 'USD', estado_documentacion: 'Pendiente',
   estado: 'Depósito Origen', destino_final: '', tipo_importacion: '', categoria: '',
-}
-
-// ── Inline status dropdown ──────────────────────────────────────────────────
-function InlineStatusBadge({
-  value, options, variant, onSave,
-}: {
-  value: string; options: string[]; variant: Record<string, any>; onSave: (v: string) => Promise<void>
-}) {
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  async function select(v: string) {
-    if (v === value) { setOpen(false); return }
-    setSaving(true); setOpen(false)
-    await onSave(v)
-    setSaving(false)
-  }
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1 group"
-        title="Clic para cambiar estado"
-        disabled={saving}
-      >
-        <Badge variant={variant[value] ?? 'secondary'}>{saving ? '...' : value}</Badge>
-        <ChevronRight size={11} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 mt-1 z-30 bg-white border border-gray-200 rounded-xl shadow-lg py-1 min-w-[190px]">
-          {options.map(opt => (
-            <button
-              key={opt}
-              onClick={() => select(opt)}
-              className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${opt === value ? 'font-semibold' : ''}`}
-            >
-              <Badge variant={variant[opt] ?? 'secondary'} className="text-xs">{opt}</Badge>
-              {opt === value && <span className="ml-auto text-[#6B1A1A] text-xs">✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
 }
 
 export default function ItemsPage() {

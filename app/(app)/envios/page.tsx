@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
+import { InlineStatusBadge } from '@/components/ui/inline-status-badge'
 import { Plus, Pencil, Trash2, Package, History, Lock, Unlock, Search, ChevronDown, ChevronRight } from 'lucide-react'
 import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS, ESTADOS_DOC, ESTADOS_ITEM, TIPO_IMP_CONFIG } from '@/lib/constants'
 import { fmtDate } from '@/lib/utils'
@@ -46,57 +47,7 @@ const estadoVariant: Record<string, any> = {
   'Puerto Destino': 'default', 'Zona Primaria LR': 'orange', 'Depósito Fiscal': 'success',
 }
 
-// ── Inline status badge (same as items page) ────────────────────────────────
-function InlineBadge({
-  value, options, variant, onSave,
-}: {
-  value: string; options: string[]; variant: Record<string, any>; onSave: (v: string) => Promise<void>
-}) {
-  const [open, setOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
-
-  async function select(v: string) {
-    if (v === value) { setOpen(false); return }
-    setSaving(true); setOpen(false)
-    await onSave(v)
-    setSaving(false)
-  }
-
-  return (
-    <div ref={ref} className="relative inline-block">
-      <button
-        onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
-        className="flex items-center gap-1 group"
-        title="Clic para cambiar"
-        disabled={saving}
-      >
-        <Badge variant={variant[value] ?? 'secondary'} className="text-xs">{saving ? '...' : value}</Badge>
-        <ChevronRight size={10} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 mt-1 z-40 bg-white border border-gray-200 rounded-xl shadow-xl py-1 min-w-[180px]">
-          {options.map(opt => (
-            <button
-              key={opt}
-              onClick={e => { e.stopPropagation(); select(opt) }}
-              className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors ${opt === value ? 'font-semibold' : ''}`}
-            >
-              <Badge variant={variant[opt] ?? 'secondary'} className="text-xs">{opt}</Badge>
-              {opt === value && <span className="ml-auto text-[#6B1A1A] text-xs">✓</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
+// InlineStatusBadge → now using shared InlineStatusBadge with portal from @/components/ui/inline-status-badge
 
 // ── Expanded items panel ────────────────────────────────────────────────────
 function ItemsPanel({ idEnvio }: { idEnvio: string }) {
@@ -178,19 +129,21 @@ function ItemsPanel({ idEnvio }: { idEnvio: string }) {
                         : '-'}
                     </td>
                     <td className="px-3 py-2">
-                      <InlineBadge
+                      <InlineStatusBadge
                         value={it.estado_documentacion ?? 'Pendiente'}
                         options={ESTADOS_DOC}
                         variant={docVariant}
                         onSave={v => patchItem(it.id_item, { estado_documentacion: v })}
+                        stopPropagation
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <InlineBadge
+                      <InlineStatusBadge
                         value={it.estado ?? 'Depósito Origen'}
                         options={ESTADOS_ITEM}
                         variant={estadoVariant}
                         onSave={v => patchItem(it.id_item, { estado: v })}
+                        stopPropagation
                       />
                     </td>
                     <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{it.destino_final ?? '-'}</td>
