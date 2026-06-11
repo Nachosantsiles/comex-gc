@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Topbar } from '@/components/layout/topbar'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -8,8 +8,8 @@ import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
-import { Plus, Pencil, Trash2, Package, History, Lock, Unlock, Search } from 'lucide-react'
-import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS } from '@/lib/constants'
+import { Plus, Pencil, Trash2, Package, History, Lock, Unlock, Search, ChevronDown, ChevronRight } from 'lucide-react'
+import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS, ESTADOS_DOC, ESTADOS_ITEM } from '@/lib/constants'
 
 const TIPOS_TRANSPORTE = ['Marítimo', 'Aéreo', 'Terrestre Internacional']
 
@@ -21,7 +21,6 @@ const emptyForm = {
   fecha_desconsolidacion: '', observaciones: '', cerrado: false,
 }
 
-/** Compute current shipment stage from filled dates */
 function getEtapa(e: any): { label: string; variant: any } {
   if (e.cerrado) return { label: 'Cerrado', variant: 'secondary' }
   if (e.fecha_desconsolidacion) return { label: 'Desconsolidado', variant: 'success' }
@@ -37,6 +36,170 @@ const TIPO_ICON: Record<string, string> = {
   'Marítimo': '🚢', 'Aéreo': '✈️', 'Terrestre Internacional': '🚛',
 }
 
+const docVariant: Record<string, any> = {
+  Pendiente: 'secondary', 'En Preparación': 'default', 'En Revisión': 'warning',
+  Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'default', Finalizado: 'success',
+}
+const estadoVariant: Record<string, any> = {
+  'Depósito Origen': 'secondary', 'Puerto Origen': 'default', 'En tránsito': 'warning',
+  'Puerto Destino': 'default', 'Zona Primaria LR': 'orange', 'Depósito Fiscal': 'success',
+}
+
+// ── Inline status badge (same as items page) ────────────────────────────────
+function InlineBadge({
+  value, options, variant, onSave,
+}: {
+  value: string; options: string[]; variant: Record<string, any>; onSave: (v: string) => Promise<void>
+}) {
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function h(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  async function select(v: string) {
+    if (v === value) { setOpen(false); return }
+    setSaving(true); setOpen(false)
+    await onSave(v)
+    setSaving(false)
+  }
+
+  return (
+    <div ref={ref} className="relative inline-block">
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(o => !o) }}
+        className="flex items-center gap-1 group"
+        title="Clic para cambiar"
+        disabled={saving}
+      >
+        <Badge variant={variant[value] ?? 'secondary'} className="text-xs">{saving ? '...' : value}</Badge>
+        <ChevronRight size={10} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-40 bg-white border border-gray-200 rounded-xl shadow-xl py-1 min-w-[180px]">
+          {options.map(opt => (
+            <button
+              key={opt}
+              onClick={e => { e.stopPropagation(); select(opt) }}
+              className={`flex items-center gap-2 w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors ${opt === value ? 'font-semibold' : ''}`}
+            >
+              <Badge variant={variant[opt] ?? 'secondary'} className="text-xs">{opt}</Badge>
+              {opt === value && <span className="ml-auto text-[#6B1A1A] text-xs">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Expanded items panel ────────────────────────────────────────────────────
+function ItemsPanel({ idEnvio }: { idEnvio: string }) {
+  const [items, setItems] = useState<any[] | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/items?id_envio=${encodeURIComponent(idEnvio)}`)
+      .then(r => r.json())
+      .then(setItems)
+  }, [idEnvio])
+
+  const patchItem = useCallback(async (id: string, fields: Record<string, string>) => {
+    await fetch(`/api/items/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields),
+    })
+    setItems(prev => prev ? prev.map(it => it.id_item === id ? { ...it, ...fields } : it) : prev)
+  }, [])
+
+  if (!items) {
+    return (
+      <tr>
+        <td colSpan={10} className="px-6 py-4 bg-[#F9F6F0] border-b border-amber-100">
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="animate-spin w-3 h-3 border-2 border-gray-300 border-t-[#6B1A1A] rounded-full" />
+            Cargando ítems...
+          </div>
+        </td>
+      </tr>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <tr>
+        <td colSpan={10} className="px-6 py-5 bg-[#F9F6F0] border-b border-amber-100">
+          <p className="text-sm text-gray-400 text-center">Sin ítems asociados a este envío</p>
+        </td>
+      </tr>
+    )
+  }
+
+  return (
+    <tr>
+      <td colSpan={10} className="bg-[#F9F6F0] border-b border-amber-100 px-0 py-0">
+        <div className="px-8 py-3">
+          {/* Header */}
+          <div className="flex items-center gap-2 mb-2">
+            <Package size={13} className="text-[#6B1A1A]" />
+            <span className="text-xs font-semibold text-[#6B1A1A] uppercase tracking-wider">
+              {items.length} ítem{items.length !== 1 ? 's' : ''} en este envío
+            </span>
+          </div>
+          {/* Mini table */}
+          <div className="rounded-xl overflow-hidden border border-amber-100 bg-white shadow-sm">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-amber-50/60 border-b border-amber-100">
+                  {['ID Ítem', 'Detalle', 'Shipper', 'Consignee', 'Factura', 'Valor', 'Estado Doc.', 'Estado', 'Destino'].map(h => (
+                    <th key={h} className="text-left px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it, i) => (
+                  <tr key={it.id_item} className={`border-b border-amber-50 hover:bg-amber-50/40 transition-colors ${i === items.length - 1 ? 'border-0' : ''}`}>
+                    <td className="px-3 py-2 font-semibold text-[#6B1A1A] whitespace-nowrap">{it.id_item}</td>
+                    <td className="px-3 py-2 text-gray-700 max-w-[160px] truncate" title={it.detalle}>{it.detalle ?? '-'}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{it.shipper ?? '-'}</td>
+                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{it.consignee ?? '-'}</td>
+                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap font-mono">{it.nro_factura ?? '-'}</td>
+                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap">
+                      {it.valor_total_factura
+                        ? `${it.moneda ?? 'USD'} ${Number(it.valor_total_factura).toLocaleString()}`
+                        : '-'}
+                    </td>
+                    <td className="px-3 py-2">
+                      <InlineBadge
+                        value={it.estado_documentacion ?? 'Pendiente'}
+                        options={ESTADOS_DOC}
+                        variant={docVariant}
+                        onSave={v => patchItem(it.id_item, { estado_documentacion: v })}
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <InlineBadge
+                        value={it.estado ?? 'Depósito Origen'}
+                        options={ESTADOS_ITEM}
+                        variant={estadoVariant}
+                        onSave={v => patchItem(it.id_item, { estado: v })}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{it.destino_final ?? '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+// ── Main page ───────────────────────────────────────────────────────────────
 export default function EnviosPage() {
   const [envios, setEnvios] = useState<any[]>([])
   const [open, setOpen] = useState(false)
@@ -52,6 +215,7 @@ export default function EnviosPage() {
   const [originalDates, setOriginalDates] = useState({ etd: '', eta: '' })
   const [search, setSearch] = useState('')
   const [filterEstado, setFilterEstado] = useState<'todos' | 'activos' | 'cerrados'>('todos')
+  const [expandedEnvio, setExpandedEnvio] = useState<string | null>(null)
 
   async function load() {
     const r = await fetch('/api/envios')
@@ -100,7 +264,9 @@ export default function EnviosPage() {
 
   async function del(id: string) {
     if (!confirm('¿Eliminar este envío?')) return
-    await fetch(`/api/envios/${id}`, { method: 'DELETE' }); load()
+    await fetch(`/api/envios/${id}`, { method: 'DELETE' })
+    if (expandedEnvio === id) setExpandedEnvio(null)
+    load()
   }
 
   async function openHistorial(e: any) {
@@ -113,6 +279,10 @@ export default function EnviosPage() {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...e, cerrado: e.cerrado ? 0 : 1 }),
     }); load()
+  }
+
+  function toggleExpand(id: string) {
+    setExpandedEnvio(prev => prev === id ? null : id)
   }
 
   const filtered = envios.filter(e => {
@@ -149,7 +319,6 @@ export default function EnviosPage() {
                 className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 w-64 focus:border-[#6B1A1A] focus:outline-none focus:ring-1 focus:ring-[#6B1A1A]"
               />
             </div>
-            {/* Estado filter chips */}
             <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
               {[
                 { key: 'todos', label: `Todos (${envios.length})` },
@@ -179,6 +348,7 @@ export default function EnviosPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
+                  <th className="px-3 py-3 w-8" /> {/* expand chevron col */}
                   {['ID Envío', 'Tipo', 'Agencia/Línea', 'Origen → Destino', 'Ref. Contenedor', 'ETD', 'ETA', 'Etapa', 'Ítems', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
@@ -187,59 +357,73 @@ export default function EnviosPage() {
               <tbody>
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="text-center py-16 text-gray-400">
+                    <td colSpan={11} className="text-center py-16 text-gray-400">
                       {search || filterEstado !== 'todos' ? 'No se encontraron envíos con ese filtro' : 'No hay envíos registrados'}
                     </td>
                   </tr>
                 )}
                 {filtered.map((e) => {
                   const etapa = getEtapa(e)
+                  const isExpanded = expandedEnvio === e.id_envio
                   return (
-                    <tr
-                      key={e.id_envio}
-                      className={`border-b border-gray-50 hover:bg-gray-50/80 transition-colors ${e.cerrado ? 'opacity-55' : ''}`}
-                    >
-                      <td className="px-4 py-3.5 font-semibold text-[#6B1A1A]">{e.id_envio}</td>
-                      <td className="px-4 py-3.5 text-gray-700">
-                        <span className="mr-1">{TIPO_ICON[e.tipo_transporte] ?? '📦'}</span>
-                        {e.tipo_transporte ?? '-'}
-                      </td>
-                      <td className="px-4 py-3.5 text-gray-700">{e.nombre_agencia ?? '-'}</td>
-                      <td className="px-4 py-3.5 text-gray-700">
-                        <span className="text-gray-500">{e.origen ?? '-'}</span>
-                        <span className="mx-1 text-gray-300">→</span>
-                        <span className="font-medium">{e.destino ?? '-'}</span>
-                      </td>
-                      <td className="px-4 py-3.5 text-xs text-gray-500 font-mono">{e.ref_contenedor ?? '-'}</td>
-                      <td className="px-4 py-3.5 text-xs text-gray-500">{e.etd ?? '-'}</td>
-                      <td className="px-4 py-3.5 text-xs text-gray-500">{e.eta ?? '-'}</td>
-                      <td className="px-4 py-3.5">
-                        <Badge variant={etapa.variant}>{etapa.label}</Badge>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <Badge variant="default" className="gap-1">
-                          <Package size={11} />{e.total_items ?? 0}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex gap-1 items-center">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(e)} title="Editar"><Pencil size={14} /></Button>
-                          <Button variant="ghost" size="icon" onClick={() => openHistorial(e)} title="Historial ETD/ETA"><History size={14} /></Button>
-                          <Button
-                            variant="ghost" size="icon"
-                            onClick={() => toggleCerrado(e)}
-                            title={e.cerrado ? 'Reabrir envío' : 'Cerrar envío'}
-                          >
-                            {e.cerrado
-                              ? <Unlock size={14} className="text-green-600" />
-                              : <Lock size={14} className="text-gray-400" />}
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => del(e.id_envio)}>
-                            <Trash2 size={14} className="text-red-400" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
+                    <>
+                      <tr
+                        key={e.id_envio}
+                        onClick={() => toggleExpand(e.id_envio)}
+                        className={`border-b border-gray-50 transition-colors cursor-pointer select-none
+                          ${e.cerrado ? 'opacity-55' : ''}
+                          ${isExpanded ? 'bg-amber-50/50 border-amber-100' : 'hover:bg-gray-50/80'}`}
+                      >
+                        {/* Expand chevron */}
+                        <td className="px-3 py-3.5 w-8">
+                          <span className={`text-gray-400 transition-transform duration-200 inline-block ${isExpanded ? 'rotate-90' : ''}`}>
+                            <ChevronRight size={15} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 font-semibold text-[#6B1A1A]">{e.id_envio}</td>
+                        <td className="px-4 py-3.5 text-gray-700">
+                          <span className="mr-1">{TIPO_ICON[e.tipo_transporte] ?? '📦'}</span>
+                          {e.tipo_transporte ?? '-'}
+                        </td>
+                        <td className="px-4 py-3.5 text-gray-700">{e.nombre_agencia ?? '-'}</td>
+                        <td className="px-4 py-3.5 text-gray-700">
+                          <span className="text-gray-500">{e.origen ?? '-'}</span>
+                          <span className="mx-1 text-gray-300">→</span>
+                          <span className="font-medium">{e.destino ?? '-'}</span>
+                        </td>
+                        <td className="px-4 py-3.5 text-xs text-gray-500 font-mono">{e.ref_contenedor ?? '-'}</td>
+                        <td className="px-4 py-3.5 text-xs text-gray-500">{e.etd ?? '-'}</td>
+                        <td className="px-4 py-3.5 text-xs text-gray-500">{e.eta ?? '-'}</td>
+                        <td className="px-4 py-3.5">
+                          <Badge variant={etapa.variant}>{etapa.label}</Badge>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <Badge variant="default" className="gap-1">
+                            <Package size={11} />{e.total_items ?? 0}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3.5" onClick={ev => ev.stopPropagation()}>
+                          <div className="flex gap-1 items-center">
+                            <Button variant="ghost" size="icon" onClick={() => openEdit(e)} title="Editar"><Pencil size={14} /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => openHistorial(e)} title="Historial ETD/ETA"><History size={14} /></Button>
+                            <Button
+                              variant="ghost" size="icon"
+                              onClick={() => toggleCerrado(e)}
+                              title={e.cerrado ? 'Reabrir envío' : 'Cerrar envío'}
+                            >
+                              {e.cerrado
+                                ? <Unlock size={14} className="text-green-600" />
+                                : <Lock size={14} className="text-gray-400" />}
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => del(e.id_envio)}>
+                              <Trash2 size={14} className="text-red-400" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* ── Expanded items panel ── */}
+                      {isExpanded && <ItemsPanel key={`items-${e.id_envio}`} idEnvio={e.id_envio} />}
+                    </>
                   )
                 })}
               </tbody>
@@ -264,7 +448,6 @@ export default function EnviosPage() {
           <Select label="Gestión" options={GESTIONES} placeholder="Seleccionar..." value={form.gestion} onChange={(e: any) => set('gestion', e.target.value)} />
           <div />
 
-          {/* Dates section */}
           <div className="col-span-2">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b">Fechas de tránsito</p>
             <div className="grid grid-cols-3 gap-4">
