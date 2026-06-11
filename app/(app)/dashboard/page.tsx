@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   Ship, Package, Landmark, AlertTriangle, Clock, TruckIcon,
-  DollarSign, BarChart2, Timer, CheckCircle2, AlertCircle,
+  DollarSign, BarChart2, Timer, CheckCircle2, AlertCircle, Download,
 } from 'lucide-react'
 import { fmtUSD } from '@/lib/utils'
 import { DateRangeFilter } from '@/components/ui/date-range-filter'
+import { Button } from '@/components/ui/button'
 
 const ChartLoader = <div className="flex items-center justify-center h-[260px] text-sm text-gray-400 animate-pulse">Cargando gráfica...</div>
 
@@ -44,6 +45,23 @@ export default function DashboardPage() {
   const [kpiSub, setKpiSub] = useState<'general' | 'por_item' | 'por_envio'>('general')
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
+  const [downloading, setDownloading] = useState(false)
+
+  async function downloadBackup() {
+    setDownloading(true)
+    try {
+      const res = await fetch('/api/backup')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `comex-backup-${new Date().toISOString().slice(0, 10)}.xlsx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   function buildQS() {
     const p = new URLSearchParams()
@@ -86,7 +104,13 @@ export default function DashboardPage() {
   return (
     <div>
       <Topbar title="Dashboard" actions={
-        <DateRangeFilter desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} onClear={() => { setDesde(''); setHasta('') }} />
+        <div className="flex items-center gap-3">
+          <DateRangeFilter desde={desde} hasta={hasta} onDesde={setDesde} onHasta={setHasta} onClear={() => { setDesde(''); setHasta('') }} />
+          <Button variant="outline" size="sm" onClick={downloadBackup} disabled={downloading}>
+            <Download size={15} />
+            {downloading ? 'Exportando...' : 'Backup Excel'}
+          </Button>
+        </div>
       } />
       <div className="p-6 space-y-6">
 
