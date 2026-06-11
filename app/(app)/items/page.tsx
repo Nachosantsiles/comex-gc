@@ -10,19 +10,16 @@ import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { InlineStatusBadge } from '@/components/ui/inline-status-badge'
 import { Plus, Pencil, Trash2, CheckSquare, Square, ChevronDown } from 'lucide-react'
-import { ESTADOS_DOC, MONEDAS, DESTINOS_FINALES, TIPOS_IMPORTACION, TIPO_IMP_CONFIG } from '@/lib/constants'
-import { fmtDate, getEtapa } from '@/lib/utils'
+import { ESTADOS_DOC, ESTADOS_ENVIO, ESTADO_ENVIO_VARIANT, MONEDAS, DESTINOS_FINALES, TIPOS_IMPORTACION, TIPO_IMP_CONFIG } from '@/lib/constants'
+import { fmtDate } from '@/lib/utils'
 
 export const docVariant: Record<string, any> = {
   Pendiente: 'secondary', 'En Preparación': 'blue', 'En Revisión': 'warning',
   Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'indigo', Finalizado: 'success',
 }
 
-// Etapa labels (from getEtapa) for filter dropdown
-const ETAPA_LABELS = [
-  'Sin Iniciar', 'ETD Confirmado', 'Cargado', 'En Tránsito',
-  'Puerto Destino', 'En La Rioja', 'Desconsolidado', 'Cerrado',
-]
+// Filter options mirror ESTADOS_ENVIO
+const ETAPA_LABELS = [...ESTADOS_ENVIO]
 
 const empty = {
   id_envio: '', detalle: '', shipper: '', consignee: '', nro_factura: '',
@@ -94,11 +91,7 @@ export default function ItemsPage() {
   // ── Bulk ──────────────────────────────────────────────────────────────────
   const filtered = items.filter(i => {
     const matchText = !filter || i.id_item?.includes(filter) || i.detalle?.toLowerCase().includes(filter.toLowerCase()) || i.id_envio?.includes(filter)
-    const matchEstado = !filterEstado || getEtapa({
-      cerrado: i.envio_cerrado, fecha_desconsolidacion: i.envio_fecha_desconsolidacion,
-      fecha_llegada_lr: i.envio_fecha_llegada_lr, fecha_llegada_puerto: i.envio_fecha_llegada_puerto,
-      fecha_salida: i.envio_fecha_salida, fecha_carga: i.envio_fecha_carga, etd: i.envio_etd,
-    }).label === filterEstado
+    const matchEstado = !filterEstado || (i.envio_estado ?? 'Sin Iniciar') === filterEstado
     const matchDoc = !filterDoc || i.estado_documentacion === filterDoc
     return matchText && matchEstado && matchDoc
   })
@@ -223,7 +216,7 @@ export default function ItemsPage() {
                       )}
                     </div>
                   </th>
-                  {['ID Ítem', 'Detalle', 'Envío', 'Tipo Imp.', 'Shipper', 'Factura', 'Estado Doc.', 'Etapa Envío', 'ETA', ''].map(h => (
+                  {['ID Ítem', 'Detalle', 'Envío', 'Tipo Imp.', 'Shipper', 'Factura', 'Estado Doc.', 'Estado Envío', 'ETA', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -266,20 +259,13 @@ export default function ItemsPage() {
                         />
                       </td>
 
-                      {/* ── Etapa del envío (read-only, derivada del contenedor) ── */}
+                      {/* ── Estado del envío (read-only, rige para todos sus ítems) ── */}
                       <td className="px-4 py-3.5">
-                        {it.id_envio ? (() => {
-                          const etapa = getEtapa({
-                            cerrado: it.envio_cerrado,
-                            fecha_desconsolidacion: it.envio_fecha_desconsolidacion,
-                            fecha_llegada_lr: it.envio_fecha_llegada_lr,
-                            fecha_llegada_puerto: it.envio_fecha_llegada_puerto,
-                            fecha_salida: it.envio_fecha_salida,
-                            fecha_carga: it.envio_fecha_carga,
-                            etd: it.envio_etd,
-                          })
-                          return <Badge variant={etapa.variant as any}>{etapa.label}</Badge>
-                        })() : <span className="text-gray-300">—</span>}
+                        {it.id_envio
+                          ? <Badge variant={ESTADO_ENVIO_VARIANT[it.envio_estado ?? 'Sin Iniciar'] as any}>
+                              {it.envio_estado ?? 'Sin Iniciar'}
+                            </Badge>
+                          : <span className="text-gray-300">—</span>}
                       </td>
 
                       <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{fmtDate(it.envio_eta ?? it.eta)}</td>

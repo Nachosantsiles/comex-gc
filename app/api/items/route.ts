@@ -15,12 +15,7 @@ export async function GET(req: NextRequest) {
     SELECT i.*,
       e.ref_contenedor, e.tipo_transporte,
       e.etd as envio_etd, e.eta as envio_eta,
-      e.cerrado as envio_cerrado,
-      e.fecha_desconsolidacion as envio_fecha_desconsolidacion,
-      e.fecha_llegada_lr as envio_fecha_llegada_lr,
-      e.fecha_llegada_puerto as envio_fecha_llegada_puerto,
-      e.fecha_salida as envio_fecha_salida,
-      e.fecha_carga as envio_fecha_carga
+      e.estado as envio_estado
     FROM items i
     LEFT JOIN envios e ON e.id_envio = i.id_envio
   `

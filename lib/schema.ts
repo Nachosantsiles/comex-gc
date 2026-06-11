@@ -424,6 +424,24 @@ export function initializeDatabase() {
   const counters = ['envio', 'item', 'gasto']
   const insertCounter = db.prepare(`INSERT OR IGNORE INTO counters(key, value) VALUES (?,0)`)
   counters.forEach(k => insertCounter.run(k))
+
+  // Migration: add estado column to envios (idempotent)
+  try {
+    db.exec(`ALTER TABLE envios ADD COLUMN estado TEXT NOT NULL DEFAULT 'Sin Iniciar'`)
+    // Populate initial estado from existing date fields
+    db.exec(`
+      UPDATE envios SET estado = CASE
+        WHEN cerrado = 1                           THEN 'Cerrado'
+        WHEN fecha_desconsolidacion IS NOT NULL    THEN 'Desconsolidado'
+        WHEN fecha_llegada_lr       IS NOT NULL    THEN 'En La Rioja'
+        WHEN fecha_llegada_puerto   IS NOT NULL    THEN 'Puerto Destino'
+        WHEN fecha_salida           IS NOT NULL    THEN 'En Tránsito'
+        WHEN fecha_carga            IS NOT NULL    THEN 'Cargado'
+        WHEN etd                    IS NOT NULL    THEN 'ETD Confirmado'
+        ELSE 'Sin Iniciar'
+      END
+    `)
+  } catch (_) { /* column already exists */ }
 }
 
 export function nextId(prefix: string, key: string): string {

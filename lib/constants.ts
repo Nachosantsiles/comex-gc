@@ -59,6 +59,29 @@ export const CANALES = ['Verde', 'Naranja', 'Rojo']
 
 export const OTROS_GASTOS_TIPOS = ['INAL', 'ANMAT', 'SENASA', 'Certificación']
 
+/** Estado del envío (contenedor) — editable con historial */
+export const ESTADOS_ENVIO = [
+  'Sin Iniciar',
+  'ETD Confirmado',
+  'Cargado',
+  'En Tránsito',
+  'Puerto Destino',
+  'En La Rioja',
+  'Desconsolidado',
+  'Cerrado',
+] as const
+
+export const ESTADO_ENVIO_VARIANT: Record<string, string> = {
+  'Sin Iniciar':    'secondary',
+  'ETD Confirmado': 'indigo',
+  'Cargado':        'blue',
+  'En Tránsito':    'warning',
+  'Puerto Destino': 'purple',
+  'En La Rioja':    'success',
+  'Desconsolidado': 'teal',
+  'Cerrado':        'secondary',
+}
+
 /** Canonical tipo_importacion values stored in DB */
 export const TIPOS_IMPORTACION = ['IC', 'IT', 'Muestras'] as const
 

@@ -10,8 +10,8 @@ import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { InlineStatusBadge } from '@/components/ui/inline-status-badge'
 import { Plus, Pencil, Trash2, Package, History, Lock, Unlock, Search, ChevronDown, ChevronRight } from 'lucide-react'
-import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS, ESTADOS_DOC, ESTADOS_ITEM, TIPO_IMP_CONFIG } from '@/lib/constants'
-import { fmtDate, getEtapa } from '@/lib/utils'
+import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS, ESTADOS_DOC, ESTADOS_ENVIO, ESTADO_ENVIO_VARIANT, TIPO_IMP_CONFIG } from '@/lib/constants'
+import { fmtDate } from '@/lib/utils'
 
 const TIPOS_TRANSPORTE = ['Marítimo', 'Aéreo', 'Terrestre Internacional']
 
@@ -23,7 +23,7 @@ const emptyForm = {
   fecha_desconsolidacion: '', observaciones: '', cerrado: false,
 }
 
-// getEtapa imported from @/lib/utils
+// Estado del envío handled via InlineStatusBadge + PATCH /api/envios/[id]
 
 const TIPO_ICON: Record<string, string> = {
   'Marítimo': '🚢', 'Aéreo': '✈️', 'Terrestre Internacional': '🚛',
@@ -32,10 +32,6 @@ const TIPO_ICON: Record<string, string> = {
 const docVariant: Record<string, any> = {
   Pendiente: 'secondary', 'En Preparación': 'blue', 'En Revisión': 'warning',
   Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'indigo', Finalizado: 'success',
-}
-const estadoVariant: Record<string, any> = {
-  'Depósito Origen': 'secondary', 'Puerto Origen': 'indigo', 'En tránsito': 'warning',
-  'Puerto Destino': 'purple', 'Zona Primaria LR': 'orange', 'Depósito Fiscal': 'success',
 }
 
 // InlineStatusBadge → now using shared InlineStatusBadge with portal from @/components/ui/inline-status-badge
@@ -96,7 +92,7 @@ function ItemsPanel({ idEnvio }: { idEnvio: string }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-amber-50/60 border-b border-amber-100">
-                  {['ID Ítem', 'Tipo', 'Detalle', 'Shipper', 'Consignee', 'Factura', 'Valor', 'Estado Doc.', 'Estado', 'Destino'].map(h => (
+                  {['ID Ítem', 'Tipo', 'Detalle', 'Shipper', 'Consignee', 'Factura', 'Valor', 'Estado Doc.', 'Destino'].map(h => (
                     <th key={h} className="text-left px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -125,15 +121,6 @@ function ItemsPanel({ idEnvio }: { idEnvio: string }) {
                         options={ESTADOS_DOC}
                         variant={docVariant}
                         onSave={v => patchItem(it.id_item, { estado_documentacion: v })}
-                        stopPropagation
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <InlineStatusBadge
-                        value={it.estado ?? 'Depósito Origen'}
-                        options={ESTADOS_ITEM}
-                        variant={estadoVariant}
-                        onSave={v => patchItem(it.id_item, { estado: v })}
                         stopPropagation
                       />
                     </td>
@@ -173,6 +160,14 @@ export default function EnviosPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  const patchEnvioEstado = useCallback(async (id: string, estado: string) => {
+    await fetch(`/api/envios/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado }),
+    })
+    setEnvios(prev => prev.map(e => e.id_envio === id ? { ...e, estado } : e))
+  }, [])
 
   function openNew() {
     setForm({ ...emptyForm }); setEditing(null)
@@ -299,7 +294,7 @@ export default function EnviosPage() {
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/50">
                   <th className="px-3 py-3 w-8" /> {/* expand chevron col */}
-                  {['ID Envío', 'Tipo', 'Agencia/Línea', 'Origen → Destino', 'Ref. Contenedor', 'ETD', 'ETA', 'Etapa', 'Ítems', ''].map(h => (
+                  {['ID Envío', 'Tipo', 'Agencia/Línea', 'Origen → Destino', 'Ref. Contenedor', 'ETD', 'ETA', 'Estado', 'Ítems', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -313,7 +308,6 @@ export default function EnviosPage() {
                   </tr>
                 )}
                 {filtered.map((e) => {
-                  const etapa = getEtapa(e)
                   const isExpanded = expandedEnvio === e.id_envio
                   return (
                     <>
@@ -345,7 +339,13 @@ export default function EnviosPage() {
                         <td className="px-4 py-3.5 text-xs text-gray-500">{fmtDate(e.etd)}</td>
                         <td className="px-4 py-3.5 text-xs text-gray-500">{fmtDate(e.eta)}</td>
                         <td className="px-4 py-3.5">
-                          <Badge variant={etapa.variant as any}>{etapa.label}</Badge>
+                          <InlineStatusBadge
+                            value={e.estado ?? 'Sin Iniciar'}
+                            options={[...ESTADOS_ENVIO]}
+                            variant={ESTADO_ENVIO_VARIANT}
+                            onSave={v => patchEnvioEstado(e.id_envio, v)}
+                            stopPropagation
+                          />
                         </td>
                         <td className="px-4 py-3.5">
                           <Badge variant="default" className="gap-1">
