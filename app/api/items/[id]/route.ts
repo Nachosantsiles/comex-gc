@@ -45,6 +45,24 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json({ ok: true })
 }
 
+/** PATCH: partial update (estado, estado_documentacion only) */
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { id } = await params
+  const body = await req.json()
+
+  const sets: string[] = []
+  const args: any[] = []
+  if (body.estado !== undefined) { sets.push('estado=?'); args.push(body.estado) }
+  if (body.estado_documentacion !== undefined) { sets.push('estado_documentacion=?'); args.push(body.estado_documentacion) }
+  if (!sets.length) return NextResponse.json({ error: 'Sin campos' }, { status: 400 })
+
+  sets.push("updated_at=datetime('now')")
+  db.prepare(`UPDATE items SET ${sets.join(', ')} WHERE id_item=?`).run(...args, id)
+  return NextResponse.json({ ok: true })
+}
+
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })

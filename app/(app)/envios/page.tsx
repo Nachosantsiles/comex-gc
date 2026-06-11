@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useEffect, useState } from 'react'
 import { Topbar } from '@/components/layout/topbar'
 import { Card } from '@/components/ui/card'
@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
-import { Plus, Pencil, Trash2, Package, History, Lock, Unlock } from 'lucide-react'
+import { Plus, Pencil, Trash2, Package, History, Lock, Unlock, Search } from 'lucide-react'
 import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS } from '@/lib/constants'
 
 const TIPOS_TRANSPORTE = ['Marítimo', 'Aéreo', 'Terrestre Internacional']
@@ -19,6 +19,22 @@ const emptyForm = {
   bl_awb_crt: '', bl_tipo: '', fecha_carga: '', etd: '', fecha_salida: '',
   eta: '', fecha_llegada_puerto: '', fecha_llegada_lr: '',
   fecha_desconsolidacion: '', observaciones: '', cerrado: false,
+}
+
+/** Compute current shipment stage from filled dates */
+function getEtapa(e: any): { label: string; variant: any } {
+  if (e.cerrado) return { label: 'Cerrado', variant: 'secondary' }
+  if (e.fecha_desconsolidacion) return { label: 'Desconsolidado', variant: 'success' }
+  if (e.fecha_llegada_lr) return { label: 'En La Rioja', variant: 'success' }
+  if (e.fecha_llegada_puerto) return { label: 'Puerto Destino', variant: 'orange' }
+  if (e.fecha_salida) return { label: 'En Tránsito', variant: 'warning' }
+  if (e.fecha_carga) return { label: 'Cargado', variant: 'default' }
+  if (e.etd) return { label: 'ETD Confirmado', variant: 'default' }
+  return { label: 'Sin Iniciar', variant: 'secondary' }
+}
+
+const TIPO_ICON: Record<string, string> = {
+  'Marítimo': '🚢', 'Aéreo': '✈️', 'Terrestre Internacional': '🚛',
 }
 
 export default function EnviosPage() {
@@ -34,6 +50,8 @@ export default function EnviosPage() {
   const [motivo, setMotivo] = useState('')
   const [pendingSave, setPendingSave] = useState<any | null>(null)
   const [originalDates, setOriginalDates] = useState({ etd: '', eta: '' })
+  const [search, setSearch] = useState('')
+  const [filterEstado, setFilterEstado] = useState<'todos' | 'activos' | 'cerrados'>('todos')
 
   async function load() {
     const r = await fetch('/api/envios')
@@ -43,17 +61,13 @@ export default function EnviosPage() {
   useEffect(() => { load() }, [])
 
   function openNew() {
-    setForm({ ...emptyForm })
-    setEditing(null)
-    setOriginalDates({ etd: '', eta: '' })
-    setOpen(true)
+    setForm({ ...emptyForm }); setEditing(null)
+    setOriginalDates({ etd: '', eta: '' }); setOpen(true)
   }
 
   function openEdit(e: any) {
-    setForm({ ...e, cerrado: !!e.cerrado })
-    setEditing(e)
-    setOriginalDates({ etd: e.etd ?? '', eta: e.eta ?? '' })
-    setOpen(true)
+    setForm({ ...e, cerrado: !!e.cerrado }); setEditing(e)
+    setOriginalDates({ etd: e.etd ?? '', eta: e.eta ?? '' }); setOpen(true)
   }
 
   function set(key: string, val: any) { setForm((f: any) => ({ ...f, [key]: val })) }
@@ -63,10 +77,7 @@ export default function EnviosPage() {
       const etdChanged = form.etd !== originalDates.etd
       const etaChanged = form.eta !== originalDates.eta
       if (etdChanged || etaChanged) {
-        setPendingSave({ ...form })
-        setMotivo('')
-        setMotivoModal(true)
-        return
+        setPendingSave({ ...form }); setMotivo(''); setMotivoModal(true); return
       }
     }
     await doSave(form, '')
@@ -76,19 +87,11 @@ export default function EnviosPage() {
     setSaving(true)
     const body = { ...data, motivo_cambio_fecha: motivoCambio }
     if (editing) {
-      await fetch(`/api/envios/${editing.id_envio}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-      })
+      await fetch(`/api/envios/${editing.id_envio}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     } else {
-      await fetch('/api/envios', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
-      })
+      await fetch('/api/envios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     }
-    setSaving(false)
-    setOpen(false)
-    setMotivoModal(false)
-    setPendingSave(null)
-    load()
+    setSaving(false); setOpen(false); setMotivoModal(false); setPendingSave(null); load()
   }
 
   async function confirmMotivo() {
@@ -97,85 +100,155 @@ export default function EnviosPage() {
 
   async function del(id: string) {
     if (!confirm('¿Eliminar este envío?')) return
-    await fetch(`/api/envios/${id}`, { method: 'DELETE' })
-    load()
+    await fetch(`/api/envios/${id}`, { method: 'DELETE' }); load()
   }
 
   async function openHistorial(e: any) {
     const r = await fetch(`/api/historial/${e.id_envio}`)
-    setHistorial(await r.json())
-    setHistorialEnvio(e.id_envio)
-    setHistorialModal(true)
+    setHistorial(await r.json()); setHistorialEnvio(e.id_envio); setHistorialModal(true)
   }
 
   async function toggleCerrado(e: any) {
     await fetch(`/api/envios/${e.id_envio}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...e, cerrado: e.cerrado ? 0 : 1 }),
-    })
-    load()
+    }); load()
   }
+
+  const filtered = envios.filter(e => {
+    const matchesSearch = !search ||
+      e.id_envio?.toLowerCase().includes(search.toLowerCase()) ||
+      e.nombre_agencia?.toLowerCase().includes(search.toLowerCase()) ||
+      e.origen?.toLowerCase().includes(search.toLowerCase()) ||
+      e.destino?.toLowerCase().includes(search.toLowerCase()) ||
+      e.ref_contenedor?.toLowerCase().includes(search.toLowerCase())
+    const matchesEstado =
+      filterEstado === 'todos' ? true :
+      filterEstado === 'activos' ? !e.cerrado :
+      !!e.cerrado
+    return matchesSearch && matchesEstado
+  })
+
+  const totalActivos = envios.filter(e => !e.cerrado).length
+  const totalCerrados = envios.filter(e => e.cerrado).length
 
   return (
     <div>
       <Topbar title="Envíos" />
       <div className="p-6">
-        <div className="flex justify-between items-center mb-5">
-          <p className="text-sm text-gray-500">{envios.length} envío{envios.length !== 1 ? 's' : ''} registrado{envios.length !== 1 ? 's' : ''}</p>
+
+        {/* ── Search + filter bar ──────────────────────────────────────────── */}
+        <div className="flex items-center justify-between mb-5 gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Buscar envío, agencia, origen..."
+                className="pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 w-64 focus:border-[#6B1A1A] focus:outline-none focus:ring-1 focus:ring-[#6B1A1A]"
+              />
+            </div>
+            {/* Estado filter chips */}
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+              {[
+                { key: 'todos', label: `Todos (${envios.length})` },
+                { key: 'activos', label: `Activos (${totalActivos})` },
+                { key: 'cerrados', label: `Cerrados (${totalCerrados})` },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setFilterEstado(key as any)}
+                  className={`px-3 py-1.5 transition-colors ${
+                    filterEstado === key
+                      ? 'bg-[#6B1A1A] text-white font-medium'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <Button onClick={openNew}><Plus size={16} />Nuevo Envío</Button>
         </div>
 
+        {/* ── Table ───────────────────────────────────────────────────────── */}
         <Card>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100">
-                  {['ID Envío', 'Tipo', 'Agencia/Línea', 'Origen → Destino', 'Incoterm', 'ETD', 'ETA', 'Estado', 'Ítems', ''].map(h => (
+                <tr className="border-b border-gray-100 bg-gray-50/50">
+                  {['ID Envío', 'Tipo', 'Agencia/Línea', 'Origen → Destino', 'Ref. Contenedor', 'ETD', 'ETA', 'Etapa', 'Ítems', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {envios.length === 0 && (
-                  <tr><td colSpan={10} className="text-center py-12 text-gray-400">No hay envíos registrados</td></tr>
-                )}
-                {envios.map((e) => (
-                  <tr key={e.id_envio} className={`border-b border-gray-50 hover:bg-gray-50 transition-colors ${e.cerrado ? 'opacity-60' : ''}`}>
-                    <td className="px-4 py-3 font-medium text-[#6B1A1A]">{e.id_envio}</td>
-                    <td className="px-4 py-3">{e.tipo_transporte ?? '-'}</td>
-                    <td className="px-4 py-3">{e.nombre_agencia ?? '-'}</td>
-                    <td className="px-4 py-3">{e.origen ?? '-'} → {e.destino ?? '-'}</td>
-                    <td className="px-4 py-3">{e.incoterm ?? '-'}</td>
-                    <td className="px-4 py-3">{e.etd ?? '-'}</td>
-                    <td className="px-4 py-3">{e.eta ?? '-'}</td>
-                    <td className="px-4 py-3">
-                      {e.cerrado
-                        ? <Badge variant="secondary">Cerrado</Badge>
-                        : <Badge variant="success">Activo</Badge>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge variant="default" className="gap-1"><Package size={12} />{e.total_items ?? 0}</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(e)} title="Editar"><Pencil size={15} /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => openHistorial(e)} title="Ver historial ETD/ETA"><History size={15} /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => toggleCerrado(e)} title={e.cerrado ? 'Reabrir' : 'Cerrar envío'}>
-                          {e.cerrado ? <Unlock size={15} className="text-green-600" /> : <Lock size={15} className="text-gray-400" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => del(e.id_envio)}><Trash2 size={15} className="text-red-500" /></Button>
-                      </div>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={10} className="text-center py-16 text-gray-400">
+                      {search || filterEstado !== 'todos' ? 'No se encontraron envíos con ese filtro' : 'No hay envíos registrados'}
                     </td>
                   </tr>
-                ))}
+                )}
+                {filtered.map((e) => {
+                  const etapa = getEtapa(e)
+                  return (
+                    <tr
+                      key={e.id_envio}
+                      className={`border-b border-gray-50 hover:bg-gray-50/80 transition-colors ${e.cerrado ? 'opacity-55' : ''}`}
+                    >
+                      <td className="px-4 py-3.5 font-semibold text-[#6B1A1A]">{e.id_envio}</td>
+                      <td className="px-4 py-3.5 text-gray-700">
+                        <span className="mr-1">{TIPO_ICON[e.tipo_transporte] ?? '📦'}</span>
+                        {e.tipo_transporte ?? '-'}
+                      </td>
+                      <td className="px-4 py-3.5 text-gray-700">{e.nombre_agencia ?? '-'}</td>
+                      <td className="px-4 py-3.5 text-gray-700">
+                        <span className="text-gray-500">{e.origen ?? '-'}</span>
+                        <span className="mx-1 text-gray-300">→</span>
+                        <span className="font-medium">{e.destino ?? '-'}</span>
+                      </td>
+                      <td className="px-4 py-3.5 text-xs text-gray-500 font-mono">{e.ref_contenedor ?? '-'}</td>
+                      <td className="px-4 py-3.5 text-xs text-gray-500">{e.etd ?? '-'}</td>
+                      <td className="px-4 py-3.5 text-xs text-gray-500">{e.eta ?? '-'}</td>
+                      <td className="px-4 py-3.5">
+                        <Badge variant={etapa.variant}>{etapa.label}</Badge>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <Badge variant="default" className="gap-1">
+                          <Package size={11} />{e.total_items ?? 0}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex gap-1 items-center">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(e)} title="Editar"><Pencil size={14} /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => openHistorial(e)} title="Historial ETD/ETA"><History size={14} /></Button>
+                          <Button
+                            variant="ghost" size="icon"
+                            onClick={() => toggleCerrado(e)}
+                            title={e.cerrado ? 'Reabrir envío' : 'Cerrar envío'}
+                          >
+                            {e.cerrado
+                              ? <Unlock size={14} className="text-green-600" />
+                              : <Lock size={14} className="text-gray-400" />}
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => del(e.id_envio)}>
+                            <Trash2 size={14} className="text-red-400" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         </Card>
       </div>
 
-      {/* Modal principal */}
+      {/* ── Modal editar/nuevo ───────────────────────────────────────────── */}
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? `Editar ${editing.id_envio}` : 'Nuevo Envío'} size="2xl">
         <div className="grid grid-cols-2 gap-4">
           <Select label="Tipo de Transporte" options={TIPOS_TRANSPORTE} placeholder="Seleccionar..." value={form.tipo_transporte} onChange={(e: any) => set('tipo_transporte', e.target.value)} />
@@ -190,19 +263,27 @@ export default function EnviosPage() {
           <DynamicSelect label="Destino" tipo="destino" value={form.destino} onChange={v => set('destino', v)} placeholder="Seleccionar o agregar..." />
           <Select label="Gestión" options={GESTIONES} placeholder="Seleccionar..." value={form.gestion} onChange={(e: any) => set('gestion', e.target.value)} />
           <div />
-          <Input label="ETD (Estimated Time of Departure)" type="date" value={form.etd} onChange={(e: any) => set('etd', e.target.value)} />
-          <Input label="ETA (Estimated Time of Arrival)" type="date" value={form.eta} onChange={(e: any) => set('eta', e.target.value)} />
-          {editing && (form.etd !== originalDates.etd || form.eta !== originalDates.eta) && (
-            <div className="col-span-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-700">
-              Se registrará el cambio de fecha al guardar. Se pedirá motivo.
+
+          {/* Dates section */}
+          <div className="col-span-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-1 border-b">Fechas de tránsito</p>
+            <div className="grid grid-cols-3 gap-4">
+              <Input label="ETD" type="date" value={form.etd} onChange={(e: any) => set('etd', e.target.value)} />
+              <Input label="ETA" type="date" value={form.eta} onChange={(e: any) => set('eta', e.target.value)} />
+              <Input label="Fecha de Carga" type="date" value={form.fecha_carga} onChange={(e: any) => set('fecha_carga', e.target.value)} />
+              <Input label="Fecha de Salida" type="date" value={form.fecha_salida} onChange={(e: any) => set('fecha_salida', e.target.value)} />
+              <Input label="Llegada a Puerto" type="date" value={form.fecha_llegada_puerto} onChange={(e: any) => set('fecha_llegada_puerto', e.target.value)} />
+              <Input label="Llegada a La Rioja" type="date" value={form.fecha_llegada_lr} onChange={(e: any) => set('fecha_llegada_lr', e.target.value)} />
+              <Input label="Desconsolidación" type="date" value={form.fecha_desconsolidacion} onChange={(e: any) => set('fecha_desconsolidacion', e.target.value)} />
             </div>
-          )}
-          <Input label="Fecha de Carga" type="date" value={form.fecha_carga} onChange={(e: any) => set('fecha_carga', e.target.value)} />
-          <Input label="Fecha de Salida" type="date" value={form.fecha_salida} onChange={(e: any) => set('fecha_salida', e.target.value)} />
-          <Input label="Llegada a Puerto" type="date" value={form.fecha_llegada_puerto} onChange={(e: any) => set('fecha_llegada_puerto', e.target.value)} />
-          <Input label="Llegada a LR" type="date" value={form.fecha_llegada_lr} onChange={(e: any) => set('fecha_llegada_lr', e.target.value)} />
-          <Input label="Fecha Desconsolidación" type="date" value={form.fecha_desconsolidacion} onChange={(e: any) => set('fecha_desconsolidacion', e.target.value)} />
-          <div className="flex items-center gap-2 pt-6">
+            {editing && (form.etd !== originalDates.etd || form.eta !== originalDates.eta) && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-700">
+                Se registrará el cambio de ETD/ETA al guardar. Se pedirá motivo.
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 col-span-2">
             <input type="checkbox" id="cerrado" checked={!!form.cerrado} onChange={e => set('cerrado', e.target.checked)} className="rounded" />
             <label htmlFor="cerrado" className="text-sm font-medium text-gray-700">Envío cerrado (no aparece en selects)</label>
           </div>
@@ -217,7 +298,7 @@ export default function EnviosPage() {
         </div>
       </Modal>
 
-      {/* Modal motivo de cambio de fecha */}
+      {/* ── Modal motivo cambio fecha ────────────────────────────────────── */}
       <Modal open={motivoModal} onClose={() => setMotivoModal(false)} title="Motivo de cambio de fecha" size="sm">
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
@@ -228,10 +309,8 @@ export default function EnviosPage() {
             <label className="text-sm font-medium text-gray-700">Motivo del cambio</label>
             <textarea
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#6B1A1A] focus:outline-none focus:ring-1 focus:ring-[#6B1A1A] resize-none"
-              rows={3}
-              placeholder="Ej: Demora en puerto de origen, cambio de buque..."
-              value={motivo}
-              onChange={e => setMotivo(e.target.value)}
+              rows={3} placeholder="Ej: Demora en puerto de origen, cambio de buque..."
+              value={motivo} onChange={e => setMotivo(e.target.value)}
             />
           </div>
         </div>
@@ -241,7 +320,7 @@ export default function EnviosPage() {
         </div>
       </Modal>
 
-      {/* Modal historial ETD/ETA */}
+      {/* ── Modal historial ETD/ETA ──────────────────────────────────────── */}
       <Modal open={historialModal} onClose={() => setHistorialModal(false)} title={`Historial de fechas — ${historialEnvio}`} size="lg">
         {historial.length === 0
           ? <p className="text-sm text-gray-400 text-center py-8">Sin cambios registrados</p>
