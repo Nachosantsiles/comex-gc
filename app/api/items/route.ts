@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await req.json()
-  const id_item = nextId('ITEM', 'item')
+  const id_item = nextId('I', 'item')
 
   // Get ETD/ETA from the parent envío
   const envio = body.id_envio

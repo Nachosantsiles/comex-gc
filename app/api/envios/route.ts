@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const body = await req.json()
-  const id_envio = nextId('ENV', 'envio')
+  const id_envio = nextId('E', 'envio')
 
   db.prepare(`
     INSERT INTO envios (id_envio, tipo_transporte, modalidad, nombre_agencia, ref_contenedor,
