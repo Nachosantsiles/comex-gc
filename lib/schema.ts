@@ -427,7 +427,7 @@ export function initializeDatabase() {
 }
 
 export function nextId(prefix: string, key: string): string {
-  const year = new Date().getFullYear()
+  const year = String(new Date().getFullYear()).slice(-2) // 2-digit year: 2025 → "25"
   db.prepare(`INSERT OR IGNORE INTO counters(key,value) VALUES (?,0)`).run(key)
   const result = db.prepare(`UPDATE counters SET value=value+1 WHERE key=? RETURNING value`).get(key) as { value: number }
   return `${prefix}-${year}-${String(result.value).padStart(3, '0')}`
