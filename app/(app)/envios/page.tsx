@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { Plus, Pencil, Trash2, Package, History, Lock, Unlock, Search, ChevronDown, ChevronRight } from 'lucide-react'
 import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS, ESTADOS_DOC, ESTADOS_ITEM } from '@/lib/constants'
+import { fmtDate } from '@/lib/utils'
 
 const TIPOS_TRANSPORTE = ['Marítimo', 'Aéreo', 'Terrestre Internacional']
 
@@ -392,8 +393,8 @@ export default function EnviosPage() {
                           <span className="font-medium">{e.destino ?? '-'}</span>
                         </td>
                         <td className="px-4 py-3.5 text-xs text-gray-500 font-mono">{e.ref_contenedor ?? '-'}</td>
-                        <td className="px-4 py-3.5 text-xs text-gray-500">{e.etd ?? '-'}</td>
-                        <td className="px-4 py-3.5 text-xs text-gray-500">{e.eta ?? '-'}</td>
+                        <td className="px-4 py-3.5 text-xs text-gray-500">{fmtDate(e.etd)}</td>
+                        <td className="px-4 py-3.5 text-xs text-gray-500">{fmtDate(e.eta)}</td>
                         <td className="px-4 py-3.5">
                           <Badge variant={etapa.variant}>{etapa.label}</Badge>
                         </td>
@@ -520,7 +521,7 @@ export default function EnviosPage() {
                 <tbody>
                   {historial.map((h: any) => (
                     <tr key={h.id} className="border-b border-gray-50">
-                      <td className="px-3 py-2 text-gray-500">{h.created_at?.slice(0, 16)}</td>
+                      <td className="px-3 py-2 text-gray-500">{fmtDate(h.created_at)}</td>
                       <td className="px-3 py-2 font-medium">{h.campo}</td>
                       <td className="px-3 py-2 text-red-600">{h.valor_anterior || '-'}</td>
                       <td className="px-3 py-2 text-green-600">{h.valor_nuevo || '-'}</td>

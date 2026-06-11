@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { ESTADOS_DESPACHO, CANALES } from '@/lib/constants'
+import { fmtDate } from '@/lib/utils'
 
 const estadoVariant: Record<string, any> = { 'En curso': 'default', 'Observado': 'danger', 'Liberado': 'success' }
 const canalVariant: Record<string, any> = { Verde: 'success', Naranja: 'orange', Rojo: 'danger' }
@@ -120,8 +121,8 @@ export default function AduanaPage() {
                     <td className="px-4 py-3 text-xs text-gray-500">{d.items_str ?? '-'}</td>
                     <td className="px-4 py-3"><Badge variant={estadoVariant[d.estado] ?? 'secondary'}>{d.estado}</Badge></td>
                     <td className="px-4 py-3">{d.canal ? <Badge variant={canalVariant[d.canal] ?? 'secondary'}>{d.canal}</Badge> : '-'}</td>
-                    <td className="px-4 py-3">{d.fecha_oficializacion ?? '-'}</td>
-                    <td className="px-4 py-3">{d.fecha_liberacion ?? '-'}</td>
+                    <td className="px-4 py-3">{fmtDate(d.fecha_oficializacion)}</td>
+                    <td className="px-4 py-3">{fmtDate(d.fecha_liberacion)}</td>
                     <td className="px-4 py-3">{d.nombre_despachante ?? '-'}</td>
                     <td className="px-4 py-3">{d.honorarios_usd != null ? `USD ${d.honorarios_usd}` : '-'}</td>
                     <td className="px-4 py-3">

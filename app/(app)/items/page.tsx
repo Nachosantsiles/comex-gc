@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { Plus, Pencil, Trash2, CheckSquare, Square, ChevronDown, ChevronRight } from 'lucide-react'
 import { ESTADOS_DOC, ESTADOS_ITEM, MONEDAS, DESTINOS_FINALES } from '@/lib/constants'
+import { fmtDate } from '@/lib/utils'
 
 const docVariant: Record<string, any> = {
   Pendiente: 'secondary', 'En Preparación': 'default', 'En Revisión': 'warning',
@@ -328,7 +329,7 @@ export default function ItemsPage() {
                         />
                       </td>
 
-                      <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{it.envio_eta ?? it.eta ?? '-'}</td>
+                      <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{fmtDate(it.envio_eta ?? it.eta)}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => openEdit(it)}><Pencil size={14} /></Button>
@@ -371,8 +372,8 @@ export default function ItemsPage() {
             <div className="col-span-2 bg-[#F5EEEE] border border-red-100 rounded-lg px-4 py-3">
               <p className="text-xs font-semibold text-[#4A1010] mb-1">Fechas del envío (informativo)</p>
               <div className="flex gap-6 text-sm">
-                <span><span className="text-gray-500">ETD:</span> <strong>{selectedEnvio.etd || '—'}</strong></span>
-                <span><span className="text-gray-500">ETA:</span> <strong>{selectedEnvio.eta || '—'}</strong></span>
+                <span><span className="text-gray-500">ETD:</span> <strong>{fmtDate(selectedEnvio.etd)}</strong></span>
+                <span><span className="text-gray-500">ETA:</span> <strong>{fmtDate(selectedEnvio.eta)}</strong></span>
               </div>
             </div>
           )}

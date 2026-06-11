@@ -4,7 +4,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { fmtUSD } from '@/lib/utils'
+import { fmtUSD, fmtDate } from '@/lib/utils'
 import {
   BarChart2, Clock, DollarSign, TruckIcon, Landmark, Package,
   Save, Trash2, ChevronRight, Timer, FileText,
@@ -248,7 +248,7 @@ export default function ReportesPage() {
                           <td className="px-3 py-2.5 text-[#6B1A1A] whitespace-nowrap">{r.id_envio}</td>
                           <td className="px-3 py-2.5"><Badge variant={estadoColors[r.estado] ?? 'secondary'} className="text-xs">{r.estado ?? '—'}</Badge></td>
                           <td className="px-3 py-2.5"><Badge variant={docColors[r.estado_documentacion] ?? 'secondary'} className="text-xs">{r.estado_documentacion ?? '—'}</Badge></td>
-                          <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{r.eta ? r.eta.slice(0, 10) : '—'}</td>
+                          <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{fmtDate(r.eta)}</td>
                           <td className="px-3 py-2.5 text-right">{fmtUSD(r.mercaderia_usd)}</td>
                           <td className="px-3 py-2.5 text-right">{fmtUSD(r.total_gi_usd)}</td>
                           <td className="px-3 py-2.5 text-right">{fmtUSD(r.total_log_usd)}</td>
