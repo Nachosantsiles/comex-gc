@@ -40,7 +40,7 @@ const TIPO_ICON: Record<string, string> = {
 
 const docVariant: Record<string, any> = {
   Pendiente: 'secondary', 'En Preparación': 'blue', 'En Revisión': 'warning',
-  Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'teal', Finalizado: 'success',
+  Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'indigo', Finalizado: 'success',
 }
 const estadoVariant: Record<string, any> = {
   'Depósito Origen': 'secondary', 'Puerto Origen': 'indigo', 'En tránsito': 'warning',

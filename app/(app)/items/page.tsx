@@ -15,7 +15,7 @@ import { fmtDate } from '@/lib/utils'
 
 export const docVariant: Record<string, any> = {
   Pendiente: 'secondary', 'En Preparación': 'blue', 'En Revisión': 'warning',
-  Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'teal', Finalizado: 'success',
+  Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'indigo', Finalizado: 'success',
 }
 export const estadoVariant: Record<string, any> = {
   'Depósito Origen': 'secondary', 'Puerto Origen': 'indigo', 'En tránsito': 'warning',
