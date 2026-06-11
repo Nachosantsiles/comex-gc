@@ -10,22 +10,24 @@ import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { InlineStatusBadge } from '@/components/ui/inline-status-badge'
 import { Plus, Pencil, Trash2, CheckSquare, Square, ChevronDown } from 'lucide-react'
-import { ESTADOS_DOC, ESTADOS_ITEM, MONEDAS, DESTINOS_FINALES, TIPOS_IMPORTACION, TIPO_IMP_CONFIG } from '@/lib/constants'
-import { fmtDate } from '@/lib/utils'
+import { ESTADOS_DOC, MONEDAS, DESTINOS_FINALES, TIPOS_IMPORTACION, TIPO_IMP_CONFIG } from '@/lib/constants'
+import { fmtDate, getEtapa } from '@/lib/utils'
 
 export const docVariant: Record<string, any> = {
   Pendiente: 'secondary', 'En Preparación': 'blue', 'En Revisión': 'warning',
   Observado: 'danger', Corregido: 'orange', Aprobado: 'success', Presentado: 'indigo', Finalizado: 'success',
 }
-export const estadoVariant: Record<string, any> = {
-  'Depósito Origen': 'secondary', 'Puerto Origen': 'indigo', 'En tránsito': 'warning',
-  'Puerto Destino': 'purple', 'Zona Primaria LR': 'orange', 'Depósito Fiscal': 'success',
-}
+
+// Etapa labels (from getEtapa) for filter dropdown
+const ETAPA_LABELS = [
+  'Sin Iniciar', 'ETD Confirmado', 'Cargado', 'En Tránsito',
+  'Puerto Destino', 'En La Rioja', 'Desconsolidado', 'Cerrado',
+]
 
 const empty = {
   id_envio: '', detalle: '', shipper: '', consignee: '', nro_factura: '',
   valor_total_factura: '', moneda: 'USD', estado_documentacion: 'Pendiente',
-  estado: 'Depósito Origen', destino_final: '', tipo_importacion: '', categoria: '',
+  destino_final: '', tipo_importacion: '', categoria: '',
 }
 
 export default function ItemsPage() {
@@ -92,7 +94,11 @@ export default function ItemsPage() {
   // ── Bulk ──────────────────────────────────────────────────────────────────
   const filtered = items.filter(i => {
     const matchText = !filter || i.id_item?.includes(filter) || i.detalle?.toLowerCase().includes(filter.toLowerCase()) || i.id_envio?.includes(filter)
-    const matchEstado = !filterEstado || i.estado === filterEstado
+    const matchEstado = !filterEstado || getEtapa({
+      cerrado: i.envio_cerrado, fecha_desconsolidacion: i.envio_fecha_desconsolidacion,
+      fecha_llegada_lr: i.envio_fecha_llegada_lr, fecha_llegada_puerto: i.envio_fecha_llegada_puerto,
+      fecha_salida: i.envio_fecha_salida, fecha_carga: i.envio_fecha_carga, etd: i.envio_etd,
+    }).label === filterEstado
     const matchDoc = !filterDoc || i.estado_documentacion === filterDoc
     return matchText && matchEstado && matchDoc
   })
@@ -109,13 +115,11 @@ export default function ItemsPage() {
     setShowBulkMenu(false)
   }
   async function applyBulk() {
-    if (!selected.size || (!bulkEstado && !bulkDoc)) return
+    if (!selected.size || !bulkDoc) return
     setBulkApplying(true)
-    const body: any = { ids: Array.from(selected) }
-    if (bulkEstado) body.estado = bulkEstado
-    if (bulkDoc) body.estado_documentacion = bulkDoc
+    const body: any = { ids: Array.from(selected), estado_documentacion: bulkDoc }
     await fetch('/api/items/bulk', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-    setBulkApplying(false); setSelected(new Set()); setBulkEstado(''); setBulkDoc(''); load()
+    setBulkApplying(false); setSelected(new Set()); setBulkDoc(''); load()
   }
 
   const allChecked = filtered.length > 0 && selected.size === filtered.length
@@ -139,8 +143,8 @@ export default function ItemsPage() {
               value={filterEstado} onChange={e => setFilterEstado(e.target.value)}
               className="text-sm border border-gray-300 rounded-lg px-2 py-2 focus:outline-none focus:ring-1 focus:ring-[#6B1A1A] text-gray-600"
             >
-              <option value="">Todos los estados</option>
-              {ESTADOS_ITEM.map(s => <option key={s} value={s}>{s}</option>)}
+              <option value="">Todas las etapas</option>
+              {ETAPA_LABELS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             <select
               value={filterDoc} onChange={e => setFilterDoc(e.target.value)}
@@ -169,14 +173,6 @@ export default function ItemsPage() {
             </span>
             <div className="flex-1 flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 whitespace-nowrap">Estado ítem:</span>
-                <select value={bulkEstado} onChange={e => setBulkEstado(e.target.value)}
-                  className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#6B1A1A]">
-                  <option value="">Sin cambio</option>
-                  {ESTADOS_ITEM.map(e => <option key={e} value={e}>{e}</option>)}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-500 whitespace-nowrap">Estado doc.:</span>
                 <select value={bulkDoc} onChange={e => setBulkDoc(e.target.value)}
                   className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#6B1A1A]">
@@ -186,10 +182,10 @@ export default function ItemsPage() {
               </div>
             </div>
             <div className="flex gap-2">
-              <Button size="sm" disabled={bulkApplying || (!bulkEstado && !bulkDoc)} onClick={applyBulk}>
+              <Button size="sm" disabled={bulkApplying || !bulkDoc} onClick={applyBulk}>
                 {bulkApplying ? 'Aplicando...' : 'Aplicar'}
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => { setSelected(new Set()); setBulkEstado(''); setBulkDoc('') }}>
+              <Button size="sm" variant="secondary" onClick={() => { setSelected(new Set()); setBulkDoc('') }}>
                 Cancelar
               </Button>
             </div>
@@ -227,7 +223,7 @@ export default function ItemsPage() {
                       )}
                     </div>
                   </th>
-                  {['ID Ítem', 'Detalle', 'Envío', 'Tipo Imp.', 'Shipper', 'Factura', 'Estado Doc.', 'Estado', 'ETA', ''].map(h => (
+                  {['ID Ítem', 'Detalle', 'Envío', 'Tipo Imp.', 'Shipper', 'Factura', 'Estado Doc.', 'Etapa Envío', 'ETA', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -270,14 +266,20 @@ export default function ItemsPage() {
                         />
                       </td>
 
-                      {/* ── Inline estado ítem ── */}
+                      {/* ── Etapa del envío (read-only, derivada del contenedor) ── */}
                       <td className="px-4 py-3.5">
-                        <InlineStatusBadge
-                          value={it.estado ?? 'Depósito Origen'}
-                          options={ESTADOS_ITEM}
-                          variant={estadoVariant}
-                          onSave={v => patchItem(it.id_item, { estado: v })}
-                        />
+                        {it.id_envio ? (() => {
+                          const etapa = getEtapa({
+                            cerrado: it.envio_cerrado,
+                            fecha_desconsolidacion: it.envio_fecha_desconsolidacion,
+                            fecha_llegada_lr: it.envio_fecha_llegada_lr,
+                            fecha_llegada_puerto: it.envio_fecha_llegada_puerto,
+                            fecha_salida: it.envio_fecha_salida,
+                            fecha_carga: it.envio_fecha_carga,
+                            etd: it.envio_etd,
+                          })
+                          return <Badge variant={etapa.variant as any}>{etapa.label}</Badge>
+                        })() : <span className="text-gray-300">—</span>}
                       </td>
 
                       <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{fmtDate(it.envio_eta ?? it.eta)}</td>
@@ -316,7 +318,6 @@ export default function ItemsPage() {
             <Select label="Moneda" options={MONEDAS} value={form.moneda} onChange={(e: any) => set('moneda', e.target.value)} className="w-24" />
           </div>
           <Select label="Estado Documentación" options={ESTADOS_DOC} value={form.estado_documentacion} onChange={(e: any) => set('estado_documentacion', e.target.value)} />
-          <Select label="Estado del Ítem" options={ESTADOS_ITEM} value={form.estado} onChange={(e: any) => set('estado', e.target.value)} />
           <Select label="Destino Final" options={DESTINOS_FINALES} placeholder="Seleccionar..." value={form.destino_final} onChange={(e: any) => set('destino_final', e.target.value)} />
           <div />
           {selectedEnvio && (

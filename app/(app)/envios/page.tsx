@@ -11,7 +11,7 @@ import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { InlineStatusBadge } from '@/components/ui/inline-status-badge'
 import { Plus, Pencil, Trash2, Package, History, Lock, Unlock, Search, ChevronDown, ChevronRight } from 'lucide-react'
 import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS, ESTADOS_DOC, ESTADOS_ITEM, TIPO_IMP_CONFIG } from '@/lib/constants'
-import { fmtDate } from '@/lib/utils'
+import { fmtDate, getEtapa } from '@/lib/utils'
 
 const TIPOS_TRANSPORTE = ['Marítimo', 'Aéreo', 'Terrestre Internacional']
 
@@ -23,16 +23,7 @@ const emptyForm = {
   fecha_desconsolidacion: '', observaciones: '', cerrado: false,
 }
 
-function getEtapa(e: any): { label: string; variant: any } {
-  if (e.cerrado) return { label: 'Cerrado', variant: 'secondary' }
-  if (e.fecha_desconsolidacion) return { label: 'Desconsolidado', variant: 'success' }
-  if (e.fecha_llegada_lr) return { label: 'En La Rioja', variant: 'success' }
-  if (e.fecha_llegada_puerto) return { label: 'Puerto Destino', variant: 'orange' }
-  if (e.fecha_salida) return { label: 'En Tránsito', variant: 'warning' }
-  if (e.fecha_carga) return { label: 'Cargado', variant: 'default' }
-  if (e.etd) return { label: 'ETD Confirmado', variant: 'default' }
-  return { label: 'Sin Iniciar', variant: 'secondary' }
-}
+// getEtapa imported from @/lib/utils
 
 const TIPO_ICON: Record<string, string> = {
   'Marítimo': '🚢', 'Aéreo': '✈️', 'Terrestre Internacional': '🚛',
@@ -354,7 +345,7 @@ export default function EnviosPage() {
                         <td className="px-4 py-3.5 text-xs text-gray-500">{fmtDate(e.etd)}</td>
                         <td className="px-4 py-3.5 text-xs text-gray-500">{fmtDate(e.eta)}</td>
                         <td className="px-4 py-3.5">
-                          <Badge variant={etapa.variant}>{etapa.label}</Badge>
+                          <Badge variant={etapa.variant as any}>{etapa.label}</Badge>
                         </td>
                         <td className="px-4 py-3.5">
                           <Badge variant="default" className="gap-1">
