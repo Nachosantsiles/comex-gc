@@ -24,22 +24,25 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const body = await req.json()
   const criterio = body.criterio_distribucion ?? 'volumen'
+  const moneda = body.moneda ?? 'USD'
+  const tipoCambio = moneda === 'USD' ? 1 : (body.tipo_cambio ?? 1)
 
-  const total = (body.gastos_origen_usd ?? 0) + (body.flete_internacional_usd ?? 0) +
+  const totalMoneda = (body.gastos_origen_usd ?? 0) + (body.flete_internacional_usd ?? 0) +
     (body.gastos_destino_usd ?? 0) + (body.flete_interno_usd ?? 0) +
     (body.recargos?.reduce((a: number, r: any) => a + (r.recargo_usd ?? 0), 0) ?? 0)
+  const total = tipoCambio > 0 ? totalMoneda / tipoCambio : totalMoneda
 
   db.prepare(`
     UPDATE gastos_logisticos SET id_envio=?, nombre_agencia=?, id_tipo_contenedor=?,
       peso_total_kg=?, volumen_total_m3=?, gastos_origen_usd=?, flete_internacional_usd=?,
       gastos_destino_usd=?, nombre_terminal=?, flete_interno_usd=?,
-      criterio_distribucion=?, total_usd=?, updated_at=datetime('now')
+      criterio_distribucion=?, total_usd=?, moneda=?, tipo_cambio=?, updated_at=datetime('now')
     WHERE id_gasto=?
   `).run(
     body.id_envio, body.nombre_agencia, body.id_tipo_contenedor,
     body.peso_total_kg, body.volumen_total_m3, body.gastos_origen_usd,
     body.flete_internacional_usd, body.gastos_destino_usd, body.nombre_terminal,
-    body.flete_interno_usd, criterio, total, id
+    body.flete_interno_usd, criterio, total, moneda, tipoCambio, id
   )
 
   db.prepare('DELETE FROM recargos_logisticos WHERE id_gasto=?').run(id)
@@ -58,13 +61,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const totalPeso = body.items_proporcionales.reduce((a: number, it: any) => a + (it.peso_item_kg ?? 0), 0)
 
     body.items_proporcionales.forEach((it: any) => {
-      let prop = 0
+      let propMoneda = 0
       if (criterio === 'peso') {
-        prop = totalPeso > 0 ? ((it.peso_item_kg ?? 0) / totalPeso) * total : 0
+        propMoneda = totalPeso > 0 ? ((it.peso_item_kg ?? 0) / totalPeso) * totalMoneda : 0
       } else {
-        prop = totalVol > 0 ? ((it.volumen_item_m3 ?? 0) / totalVol) * total : 0
+        propMoneda = totalVol > 0 ? ((it.volumen_item_m3 ?? 0) / totalVol) * totalMoneda : 0
       }
-      ins.run(id, it.id_item, it.volumen_item_m3, it.peso_item_kg, prop)
+      const propUsd = tipoCambio > 0 ? propMoneda / tipoCambio : propMoneda
+      ins.run(id, it.id_item, it.volumen_item_m3, it.peso_item_kg, propUsd)
     })
   }
 

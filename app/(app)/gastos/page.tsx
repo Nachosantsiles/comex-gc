@@ -11,12 +11,21 @@ import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react'
 import { fmtUSD, fmt } from '@/lib/utils'
 
+const MONEDAS_GASTO = [
+  { value: 'USD', label: 'USD — Dólar estadounidense' },
+  { value: 'ARS', label: 'ARS — Peso argentino' },
+  { value: 'EUR', label: 'EUR — Euro' },
+  { value: 'CLP', label: 'CLP — Peso chileno' },
+  { value: 'BRL', label: 'BRL — Real brasileño' },
+]
+
 const emptyForm: any = {
   id_envio: '', nombre_agencia: '', id_tipo_contenedor: '',
   peso_total_kg: '', volumen_total_m3: '',
   gastos_origen_usd: '', flete_internacional_usd: '',
   gastos_destino_usd: '', nombre_terminal: '', flete_interno_usd: '',
   criterio_distribucion: 'volumen',
+  moneda: 'USD', tipo_cambio: '',
   recargos: [] as any[],
   items_proporcionales: [] as any[],
 }
@@ -60,6 +69,8 @@ export default function GastosPage() {
       gastos_destino_usd: full.gastos_destino_usd ?? '',
       flete_interno_usd: full.flete_interno_usd ?? '',
       criterio_distribucion: full.criterio_distribucion ?? 'volumen',
+      moneda: full.moneda ?? 'USD',
+      tipo_cambio: full.tipo_cambio && full.tipo_cambio !== 1 ? full.tipo_cambio : '',
       recargos: full.recargos ?? [],
       items_proporcionales: full.proporcionales?.map((p: any) => ({
         id_item: p.id_item, detalle: p.detalle,
@@ -115,6 +126,8 @@ export default function GastosPage() {
     setSaving(true)
     const body = {
       ...form,
+      moneda: form.moneda ?? 'USD',
+      tipo_cambio: form.moneda !== 'USD' && form.tipo_cambio ? Number(form.tipo_cambio) : 1,
       peso_total_kg: form.peso_total_kg ? Number(form.peso_total_kg) : null,
       volumen_total_m3: form.volumen_total_m3 ? Number(form.volumen_total_m3) : null,
       gastos_origen_usd: form.gastos_origen_usd ? Number(form.gastos_origen_usd) : 0,
@@ -157,14 +170,14 @@ export default function GastosPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100">
-                  {['ID Gasto', 'Envío', 'Contenedor', 'Peso (kg)', 'Vol. (m³)', 'Criterio', 'Flete Int.', 'Total USD', ''].map(h => (
+                  {['ID Gasto', 'Envío', 'Moneda', 'Contenedor', 'Peso (kg)', 'Vol. (m³)', 'Criterio', 'Flete Int.', 'Total USD', ''].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {gastos.length === 0 && (
-                  <tr><td colSpan={9} className="text-center py-12 text-gray-400">No hay gastos registrados</td></tr>
+                  <tr><td colSpan={10} className="text-center py-12 text-gray-400">No hay gastos registrados</td></tr>
                 )}
                 {gastos.map((g) => {
                   const excede = g.peso_max_kg && g.peso_total_kg > g.peso_max_kg
@@ -172,6 +185,11 @@ export default function GastosPage() {
                     <tr key={g.id_gasto} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium text-gray-700">{g.id_gasto}</td>
                       <td className="px-4 py-3 text-[#6B1A1A]">{g.id_envio ?? '-'}</td>
+                      <td className="px-4 py-3">
+                        {g.moneda && g.moneda !== 'USD'
+                          ? <Badge variant="warning">{g.moneda} → USD</Badge>
+                          : <Badge variant="default">USD</Badge>}
+                      </td>
                       <td className="px-4 py-3">{g.id_tipo_contenedor ?? '-'}</td>
                       <td className="px-4 py-3">
                         <span className={excede ? 'text-red-600 font-semibold' : ''}>{fmt(g.peso_total_kg, 0)}</span>
@@ -214,15 +232,46 @@ export default function GastosPage() {
           </section>
 
           <section>
-            <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b">Gastos (USD)</p>
+            <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b">Moneda</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Moneda de los gastos</label>
+                <select
+                  value={form.moneda}
+                  onChange={(e: any) => set('moneda', e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#6B1A1A] focus:outline-none focus:ring-1 focus:ring-[#6B1A1A]"
+                >
+                  {MONEDAS_GASTO.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+              </div>
+              {form.moneda !== 'USD' && (
+                <Input
+                  label={`Tipo de cambio (1 USD = ? ${form.moneda})`}
+                  type="number"
+                  step="0.01"
+                  value={form.tipo_cambio}
+                  onChange={(e: any) => set('tipo_cambio', e.target.value)}
+                  placeholder={`Ej: ${form.moneda === 'ARS' ? '1050' : form.moneda === 'EUR' ? '0.92' : '1'}`}
+                />
+              )}
+            </div>
+          </section>
+
+          <section>
+            <p className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b">
+              Gastos {form.moneda !== 'USD' ? `(en ${form.moneda} — se convierten a USD automáticamente)` : '(USD)'}
+            </p>
             <div className="grid grid-cols-3 gap-4">
-              <Input label="Gastos Origen" type="number" step="0.01" value={form.gastos_origen_usd} onChange={(e: any) => set('gastos_origen_usd', e.target.value)} />
-              <Input label="Flete Internacional" type="number" step="0.01" value={form.flete_internacional_usd} onChange={(e: any) => set('flete_internacional_usd', e.target.value)} />
-              <Input label="Gastos Destino" type="number" step="0.01" value={form.gastos_destino_usd} onChange={(e: any) => set('gastos_destino_usd', e.target.value)} />
-              <Input label="Flete Interno" type="number" step="0.01" value={form.flete_interno_usd} onChange={(e: any) => set('flete_interno_usd', e.target.value)} />
+              <Input label={`Gastos Origen`} type="number" step="0.01" value={form.gastos_origen_usd} onChange={(e: any) => set('gastos_origen_usd', e.target.value)} />
+              <Input label={`Flete Internacional`} type="number" step="0.01" value={form.flete_internacional_usd} onChange={(e: any) => set('flete_internacional_usd', e.target.value)} />
+              <Input label={`Gastos Destino`} type="number" step="0.01" value={form.gastos_destino_usd} onChange={(e: any) => set('gastos_destino_usd', e.target.value)} />
+              <Input label={`Flete Interno`} type="number" step="0.01" value={form.flete_interno_usd} onChange={(e: any) => set('flete_interno_usd', e.target.value)} />
               {totalGasto > 0 && (
                 <div className="col-span-2 bg-gray-50 rounded-lg px-3 py-2 text-sm">
-                  <span className="text-gray-500">Subtotal gastos:</span> <strong>{fmtUSD(totalGasto)}</strong>
+                  <span className="text-gray-500">Subtotal en {form.moneda}:</span> <strong>{totalGasto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
+                  {form.moneda !== 'USD' && form.tipo_cambio && Number(form.tipo_cambio) > 0 && (
+                    <span className="ml-3 text-[#6B1A1A]">≈ <strong>{fmtUSD(totalGasto / Number(form.tipo_cambio))}</strong></span>
+                  )}
                 </div>
               )}
             </div>

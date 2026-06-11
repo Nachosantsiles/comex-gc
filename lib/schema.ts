@@ -291,6 +291,9 @@ export function initializeDatabase() {
     `ALTER TABLE items ADD COLUMN categoria TEXT`,
     // RBAC: perm_version column for JWT staleness detection
     `ALTER TABLE users ADD COLUMN perm_version INTEGER NOT NULL DEFAULT 1`,
+    // Gastos logísticos: multi-currency support
+    `ALTER TABLE gastos_logisticos ADD COLUMN moneda TEXT DEFAULT 'USD'`,
+    `ALTER TABLE gastos_logisticos ADD COLUMN tipo_cambio REAL DEFAULT 1`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch (_) {}

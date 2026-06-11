@@ -32,9 +32,8 @@ export async function GET(req: NextRequest) {
       SUM(COALESCE(
         (SELECT SUM(o.total_usd) FROM otros_gastos_items o WHERE o.id_item = i.id_item), 0
       )) as total_otros,
-      SUM(COALESCE(
-        (SELECT SUM(gp.gasto_proporcional_usd) FROM gastos_proporcionales gp WHERE gp.id_item = i.id_item), 0
-      )) as total_log,
+      -- total_log: sum ALL gastos logísticos (already converted to USD at save time)
+      (SELECT COALESCE(SUM(total_usd), 0) FROM gastos_logisticos) as total_log,
       SUM(COALESCE(
         (SELECT
           CASE WHEN cnt.total_items > 0

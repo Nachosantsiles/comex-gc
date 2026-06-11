@@ -31,20 +31,27 @@ export async function POST(req: NextRequest) {
   const id_gasto = nextId('GL', 'gasto')
   const criterio = body.criterio_distribucion ?? 'volumen'
 
-  const total = (body.gastos_origen_usd ?? 0) + (body.flete_internacional_usd ?? 0) +
+  const moneda = body.moneda ?? 'USD'
+  const tipoCambio = moneda === 'USD' ? 1 : (body.tipo_cambio ?? 1)
+
+  // Sum amounts as entered (in selected currency), then convert to USD
+  const totalMoneda = (body.gastos_origen_usd ?? 0) + (body.flete_internacional_usd ?? 0) +
     (body.gastos_destino_usd ?? 0) + (body.flete_interno_usd ?? 0) +
     (body.recargos?.reduce((a: number, r: any) => a + (r.recargo_usd ?? 0), 0) ?? 0)
+  // total_usd always stored in USD (divide by tipo_cambio when moneda != USD)
+  const total = tipoCambio > 0 ? totalMoneda / tipoCambio : totalMoneda
 
   db.prepare(`
     INSERT INTO gastos_logisticos (id_gasto, id_envio, nombre_agencia, id_tipo_contenedor,
       peso_total_kg, volumen_total_m3, gastos_origen_usd, flete_internacional_usd,
-      gastos_destino_usd, nombre_terminal, flete_interno_usd, criterio_distribucion, total_usd)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+      gastos_destino_usd, nombre_terminal, flete_interno_usd, criterio_distribucion, total_usd,
+      moneda, tipo_cambio)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `).run(
     id_gasto, body.id_envio, body.nombre_agencia, body.id_tipo_contenedor,
     body.peso_total_kg, body.volumen_total_m3, body.gastos_origen_usd,
     body.flete_internacional_usd, body.gastos_destino_usd, body.nombre_terminal,
-    body.flete_interno_usd, criterio, total
+    body.flete_interno_usd, criterio, total, moneda, tipoCambio
   )
 
   if (body.recargos?.length) {
@@ -61,13 +68,15 @@ export async function POST(req: NextRequest) {
     const totalPeso = body.items_proporcionales.reduce((a: number, it: any) => a + (it.peso_item_kg ?? 0), 0)
 
     body.items_proporcionales.forEach((it: any) => {
-      let prop = 0
+      let propMoneda = 0
       if (criterio === 'peso') {
-        prop = totalPeso > 0 ? ((it.peso_item_kg ?? 0) / totalPeso) * total : 0
+        propMoneda = totalPeso > 0 ? ((it.peso_item_kg ?? 0) / totalPeso) * totalMoneda : 0
       } else {
-        prop = totalVol > 0 ? ((it.volumen_item_m3 ?? 0) / totalVol) * total : 0
+        propMoneda = totalVol > 0 ? ((it.volumen_item_m3 ?? 0) / totalVol) * totalMoneda : 0
       }
-      ins.run(id_gasto, it.id_item, it.volumen_item_m3, it.peso_item_kg, prop)
+      // Always store proportional in USD
+      const propUsd = tipoCambio > 0 ? propMoneda / tipoCambio : propMoneda
+      ins.run(id_gasto, it.id_item, it.volumen_item_m3, it.peso_item_kg, propUsd)
     })
   }
 
