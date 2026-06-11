@@ -9,9 +9,10 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { InlineStatusBadge } from '@/components/ui/inline-status-badge'
-import { Plus, Pencil, Trash2, CheckSquare, Square, ChevronDown } from 'lucide-react'
+import { Plus, Pencil, Trash2, CheckSquare, Square, ChevronDown, History } from 'lucide-react'
 import { ESTADOS_DOC, ESTADOS_ENVIO, ESTADO_ENVIO_VARIANT, MONEDAS, DESTINOS_FINALES, TIPOS_IMPORTACION, TIPO_IMP_CONFIG } from '@/lib/constants'
 import { fmtDate } from '@/lib/utils'
+import { EstadoTimeline, type TimelineEntry } from '@/components/ui/estado-timeline'
 
 export const docVariant: Record<string, any> = {
   Pendiente: 'secondary', 'En Preparación': 'blue', 'En Revisión': 'warning',
@@ -45,6 +46,16 @@ export default function ItemsPage() {
   const [bulkDoc, setBulkDoc] = useState('')
   const [bulkApplying, setBulkApplying] = useState(false)
   const [showBulkMenu, setShowBulkMenu] = useState(false)
+
+  // Item doc historial
+  const [itemHistorialModal, setItemHistorialModal] = useState(false)
+  const [itemHistorial, setItemHistorial] = useState<{ item: any; historial: any[] } | null>(null)
+
+  async function openItemHistorial(it: any) {
+    setItemHistorial(null); setItemHistorialModal(true)
+    const r = await fetch(`/api/items/${it.id_item}/historial`)
+    setItemHistorial(await r.json())
+  }
 
   async function load() {
     const [ir, er] = await Promise.all([fetch('/api/items'), fetch('/api/envios?abiertos=1')])
@@ -255,7 +266,8 @@ export default function ItemsPage() {
                           value={it.estado_documentacion ?? 'Pendiente'}
                           options={ESTADOS_DOC}
                           variant={docVariant}
-                          onSave={v => patchItem(it.id_item, { estado_documentacion: v })}
+                          onSave={(v, fecha) => patchItem(it.id_item, { estado_documentacion: v, ...(fecha ? { fecha_cambio: fecha } : {}) })}
+                          withDate
                         />
                       </td>
 
@@ -271,6 +283,7 @@ export default function ItemsPage() {
                       <td className="px-4 py-3.5 text-xs text-gray-500 whitespace-nowrap">{fmtDate(it.envio_eta ?? it.eta)}</td>
                       <td className="px-4 py-3.5">
                         <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openItemHistorial(it)} title="Historial documentación"><History size={14} /></Button>
                           <Button variant="ghost" size="icon" onClick={() => openEdit(it)}><Pencil size={14} /></Button>
                           <Button variant="ghost" size="icon" onClick={() => del(it.id_item)}><Trash2 size={14} className="text-red-400" /></Button>
                         </div>
@@ -283,6 +296,30 @@ export default function ItemsPage() {
           </div>
         </Card>
       </div>
+
+      {/* ── Modal historial doc ítem ─────────────────────────────────────── */}
+      <Modal open={itemHistorialModal} onClose={() => setItemHistorialModal(false)} title={`Historial doc. — ${itemHistorial?.item?.id_item ?? '...'}`} size="md">
+        {itemHistorial ? (() => {
+          const { item, historial: h } = itemHistorial
+          const docEntries: TimelineEntry[] = []
+          if (h.length > 0) {
+            docEntries.push({ estado: h[0].estado_anterior, fecha: item.created_at.slice(0, 10) })
+            h.forEach((entry: any) => docEntries.push({
+              estado: entry.estado_nuevo,
+              fecha: entry.fecha_cambio,
+              motivo: entry.motivo,
+              usuario: entry.usuario,
+            }))
+          } else {
+            docEntries.push({ estado: item.estado_documentacion, fecha: item.created_at.slice(0, 10), isCurrent: true })
+          }
+          if (docEntries.length > 1) docEntries[docEntries.length - 1].isCurrent = true
+          return <EstadoTimeline entries={docEntries} variantMap={docVariant} emptyText="Sin cambios registrados" />
+        })() : <p className="text-sm text-gray-400 text-center py-8">Cargando...</p>}
+        <div className="flex justify-end mt-4">
+          <Button variant="secondary" onClick={() => setItemHistorialModal(false)}>Cerrar</Button>
+        </div>
+      </Modal>
 
       {/* ── Modal nuevo/editar ───────────────────────────────────────────── */}
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? `Editar ${editing.id_item}` : 'Nuevo Ítem'} size="xl">

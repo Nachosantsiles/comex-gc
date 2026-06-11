@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { InlineStatusBadge } from '@/components/ui/inline-status-badge'
+import { EstadoTimeline, type TimelineEntry } from '@/components/ui/estado-timeline'
 import { Plus, Pencil, Trash2, Package, History, Lock, Unlock, Search, ChevronDown, ChevronRight } from 'lucide-react'
 import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS, ESTADOS_DOC, ESTADOS_ENVIO, ESTADO_ENVIO_VARIANT, TIPO_IMP_CONFIG } from '@/lib/constants'
 import { fmtDate } from '@/lib/utils'
@@ -120,8 +121,9 @@ function ItemsPanel({ idEnvio }: { idEnvio: string }) {
                         value={it.estado_documentacion ?? 'Pendiente'}
                         options={ESTADOS_DOC}
                         variant={docVariant}
-                        onSave={v => patchItem(it.id_item, { estado_documentacion: v })}
+                        onSave={(v, fecha) => patchItem(it.id_item, { estado_documentacion: v, ...(fecha ? { fecha_cambio: fecha } : {}) })}
                         stopPropagation
+                        withDate
                       />
                     </td>
                     <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{it.destino_final ?? '-'}</td>
@@ -145,7 +147,7 @@ export default function EnviosPage() {
   const [saving, setSaving] = useState(false)
   const [historialModal, setHistorialModal] = useState(false)
   const [historial, setHistorial] = useState<any[]>([])
-  const [historialEnvio, setHistorialEnvio] = useState('')
+  const [historialEnvio, setHistorialEnvio] = useState<any | null>(null)
   const [motivoModal, setMotivoModal] = useState(false)
   const [motivo, setMotivo] = useState('')
   const [pendingSave, setPendingSave] = useState<any | null>(null)
@@ -161,10 +163,10 @@ export default function EnviosPage() {
 
   useEffect(() => { load() }, [])
 
-  const patchEnvioEstado = useCallback(async (id: string, estado: string) => {
+  const patchEnvioEstado = useCallback(async (id: string, estado: string, fecha?: string) => {
     await fetch(`/api/envios/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ estado }),
+      body: JSON.stringify({ estado, ...(fecha ? { fecha_cambio: fecha } : {}) }),
     })
     setEnvios(prev => prev.map(e => e.id_envio === id ? { ...e, estado } : e))
   }, [])
@@ -216,7 +218,7 @@ export default function EnviosPage() {
 
   async function openHistorial(e: any) {
     const r = await fetch(`/api/historial/${e.id_envio}`)
-    setHistorial(await r.json()); setHistorialEnvio(e.id_envio); setHistorialModal(true)
+    setHistorial(await r.json()); setHistorialEnvio(e); setHistorialModal(true)
   }
 
   async function toggleCerrado(e: any) {
@@ -343,8 +345,9 @@ export default function EnviosPage() {
                             value={e.estado ?? 'Sin Iniciar'}
                             options={[...ESTADOS_ENVIO]}
                             variant={ESTADO_ENVIO_VARIANT}
-                            onSave={v => patchEnvioEstado(e.id_envio, v)}
+                            onSave={(v, fecha) => patchEnvioEstado(e.id_envio, v, fecha)}
                             stopPropagation
+                            withDate
                           />
                         </td>
                         <td className="px-4 py-3.5">
@@ -453,35 +456,67 @@ export default function EnviosPage() {
         </div>
       </Modal>
 
-      {/* ── Modal historial ETD/ETA ──────────────────────────────────────── */}
-      <Modal open={historialModal} onClose={() => setHistorialModal(false)} title={`Historial de fechas — ${historialEnvio}`} size="lg">
-        {historial.length === 0
-          ? <p className="text-sm text-gray-400 text-center py-8">Sin cambios registrados</p>
-          : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    {['Fecha cambio', 'Campo', 'Anterior', 'Nuevo', 'Motivo', 'Usuario'].map(h => (
-                      <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {historial.map((h: any) => (
-                    <tr key={h.id} className="border-b border-gray-50">
-                      <td className="px-3 py-2 text-gray-500">{fmtDate(h.created_at)}</td>
-                      <td className="px-3 py-2 font-medium">{h.campo}</td>
-                      <td className="px-3 py-2 text-red-600">{h.valor_anterior || '-'}</td>
-                      <td className="px-3 py-2 text-green-600">{h.valor_nuevo || '-'}</td>
-                      <td className="px-3 py-2">{h.motivo || '-'}</td>
-                      <td className="px-3 py-2 text-gray-500">{h.usuario || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {/* ── Modal historial ──────────────────────────────────────────────────── */}
+      <Modal open={historialModal} onClose={() => setHistorialModal(false)} title={`Historial — ${historialEnvio?.id_envio ?? ''}`} size="lg">
+        {(() => {
+          const estadoEntries: TimelineEntry[] = []
+          if (historialEnvio?.created_at) {
+            estadoEntries.push({ estado: 'Sin Iniciar', fecha: historialEnvio.created_at.slice(0, 10) })
+          }
+          historial
+            .filter((h: any) => h.campo === 'Estado')
+            .forEach((h: any) => estadoEntries.push({
+              estado: h.valor_nuevo,
+              fecha: h.fecha_cambio || h.created_at?.slice(0, 10),
+              motivo: h.motivo,
+              usuario: h.usuario,
+            }))
+          if (estadoEntries.length > 1) estadoEntries[estadoEntries.length - 1].isCurrent = true
+
+          const fechaEntries = historial.filter((h: any) => h.campo !== 'Estado')
+
+          return (
+            <>
+              {estadoEntries.length > 0 && (
+                <div className="mb-5">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Estado del envío</p>
+                  <EstadoTimeline entries={estadoEntries} variantMap={ESTADO_ENVIO_VARIANT} />
+                </div>
+              )}
+              {fechaEntries.length > 0 && (
+                <>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 mt-4">Historial ETD / ETA</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          {['Fecha', 'Campo', 'Anterior', 'Nuevo', 'Motivo', 'Usuario'].map(h => (
+                            <th key={h} className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fechaEntries.map((h: any) => (
+                          <tr key={h.id} className="border-b border-gray-50">
+                            <td className="px-3 py-2 text-gray-500">{fmtDate(h.fecha_cambio || h.created_at)}</td>
+                            <td className="px-3 py-2 font-medium">{h.campo}</td>
+                            <td className="px-3 py-2 text-red-600">{h.valor_anterior || '-'}</td>
+                            <td className="px-3 py-2 text-green-600">{h.valor_nuevo || '-'}</td>
+                            <td className="px-3 py-2 text-gray-500 text-xs">{h.motivo || '-'}</td>
+                            <td className="px-3 py-2 text-gray-500 text-xs">{h.usuario || '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+              {estadoEntries.length === 0 && fechaEntries.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-8">Sin cambios registrados</p>
+              )}
+            </>
+          )
+        })()}
         <div className="flex justify-end mt-4">
           <Button variant="secondary" onClick={() => setHistorialModal(false)}>Cerrar</Button>
         </div>

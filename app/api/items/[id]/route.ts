@@ -45,7 +45,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json({ ok: true })
 }
 
-/** PATCH: partial update (estado, estado_documentacion only) */
+/** PATCH: partial update — also logs estado_documentacion changes to historial_doc_items */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -58,8 +58,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.estado_documentacion !== undefined) { sets.push('estado_documentacion=?'); args.push(body.estado_documentacion) }
   if (!sets.length) return NextResponse.json({ error: 'Sin campos' }, { status: 400 })
 
+  // Capture current doc state before updating (for historial)
+  const current = body.estado_documentacion !== undefined
+    ? db.prepare('SELECT estado_documentacion FROM items WHERE id_item=?').get(id) as any
+    : null
+
   sets.push("updated_at=datetime('now')")
   db.prepare(`UPDATE items SET ${sets.join(', ')} WHERE id_item=?`).run(...args, id)
+
+  // Log estado_documentacion change
+  if (body.estado_documentacion !== undefined) {
+    const fecha = body.fecha_cambio || new Date().toISOString().slice(0, 10)
+    db.prepare(`
+      INSERT INTO historial_doc_items(id_item, estado_anterior, estado_nuevo, fecha_cambio, motivo, usuario)
+      VALUES (?,?,?,?,?,?)
+    `).run(id, current?.estado_documentacion ?? 'Pendiente', body.estado_documentacion, fecha, body.motivo || null, (session as any).user?.email || null)
+  }
+
   return NextResponse.json({ ok: true })
 }
 

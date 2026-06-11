@@ -428,7 +428,6 @@ export function initializeDatabase() {
   // Migration: add estado column to envios (idempotent)
   try {
     db.exec(`ALTER TABLE envios ADD COLUMN estado TEXT NOT NULL DEFAULT 'Sin Iniciar'`)
-    // Populate initial estado from existing date fields
     db.exec(`
       UPDATE envios SET estado = CASE
         WHEN cerrado = 1                           THEN 'Cerrado'
@@ -442,6 +441,26 @@ export function initializeDatabase() {
       END
     `)
   } catch (_) { /* column already exists */ }
+
+  // Migration: add fecha_cambio to historial_fechas (idempotent)
+  try {
+    db.exec(`ALTER TABLE historial_fechas ADD COLUMN fecha_cambio TEXT`)
+    db.exec(`UPDATE historial_fechas SET fecha_cambio = DATE(created_at) WHERE fecha_cambio IS NULL`)
+  } catch (_) {}
+
+  // Table for item doc-state history
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS historial_doc_items (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      id_item     TEXT NOT NULL,
+      estado_anterior TEXT,
+      estado_nuevo    TEXT NOT NULL,
+      fecha_cambio    TEXT NOT NULL,
+      motivo      TEXT,
+      usuario     TEXT,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
 }
 
 export function nextId(prefix: string, key: string): string {

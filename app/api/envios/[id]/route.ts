@@ -64,10 +64,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.estado !== undefined) {
     const current = db.prepare('SELECT estado FROM envios WHERE id_envio=?').get(id) as any
     db.prepare(`UPDATE envios SET estado=?, updated_at=datetime('now') WHERE id_envio=?`).run(body.estado, id)
+    const fecha = body.fecha_cambio || new Date().toISOString().slice(0, 10)
     db.prepare(`
-      INSERT INTO historial_fechas(id_envio, campo, valor_anterior, valor_nuevo, motivo, usuario)
-      VALUES (?,?,?,?,?,?)
-    `).run(id, 'Estado', current?.estado ?? 'Sin Iniciar', body.estado, body.motivo || null, (session as any).user?.email || null)
+      INSERT INTO historial_fechas(id_envio, campo, valor_anterior, valor_nuevo, fecha_cambio, motivo, usuario)
+      VALUES (?,?,?,?,?,?,?)
+    `).run(id, 'Estado', current?.estado ?? 'Sin Iniciar', body.estado, fecha, body.motivo || null, (session as any).user?.email || null)
   }
 
   return NextResponse.json({ ok: true })
