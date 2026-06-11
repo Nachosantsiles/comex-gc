@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { Plus, Pencil, Trash2, CheckSquare, Square, ChevronDown, ChevronRight } from 'lucide-react'
-import { ESTADOS_DOC, ESTADOS_ITEM, MONEDAS, DESTINOS_FINALES } from '@/lib/constants'
+import { ESTADOS_DOC, ESTADOS_ITEM, MONEDAS, DESTINOS_FINALES, TIPOS_IMPORTACION, TIPO_IMP_CONFIG } from '@/lib/constants'
 import { fmtDate } from '@/lib/utils'
 
 const docVariant: Record<string, any> = {
@@ -304,7 +304,11 @@ export default function ItemsPage() {
                       <td className="px-4 py-3.5 text-gray-700 max-w-[180px] truncate" title={it.detalle}>{it.detalle ?? '-'}</td>
                       <td className="px-4 py-3.5 text-[#6B1A1A] whitespace-nowrap">{it.id_envio ?? <span className="text-gray-300">—</span>}</td>
                       <td className="px-4 py-3.5">
-                        {it.tipo_importacion ? <Badge variant="default">{it.tipo_importacion}</Badge> : <span className="text-gray-300">—</span>}
+                        {it.tipo_importacion
+                          ? (() => { const cfg = TIPO_IMP_CONFIG[it.tipo_importacion]; return cfg
+                              ? <Badge variant={cfg.variant as any} title={cfg.title}>{cfg.label}</Badge>
+                              : <Badge variant="secondary">{it.tipo_importacion}</Badge> })()
+                          : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3.5 text-gray-600">{it.shipper ?? '-'}</td>
                       <td className="px-4 py-3.5 text-gray-500 text-xs">{it.nro_factura ?? '-'}</td>

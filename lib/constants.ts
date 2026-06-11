@@ -58,3 +58,13 @@ export const ESTADOS_DESPACHO = ['En curso', 'Observado', 'Liberado']
 export const CANALES = ['Verde', 'Naranja', 'Rojo']
 
 export const OTROS_GASTOS_TIPOS = ['INAL', 'ANMAT', 'SENASA', 'Certificación']
+
+/** Canonical tipo_importacion values stored in DB */
+export const TIPOS_IMPORTACION = ['IC', 'IT', 'Muestras'] as const
+
+/** Display config per tipo_importacion */
+export const TIPO_IMP_CONFIG: Record<string, { label: string; variant: string; title: string }> = {
+  IC:       { label: 'IC',       variant: 'blue',    title: 'Importación Común' },
+  IT:       { label: 'IT',       variant: 'orange',  title: 'Importación Temporal' },
+  Muestras: { label: 'Muestras', variant: 'purple',  title: 'Muestras' },
+}

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DynamicSelect } from '@/components/ui/dynamic-select'
 import { Plus, Pencil, Trash2, Package, History, Lock, Unlock, Search, ChevronDown, ChevronRight } from 'lucide-react'
-import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS, ESTADOS_DOC, ESTADOS_ITEM } from '@/lib/constants'
+import { MODALIDADES, INCOTERMS, GESTIONES, BL_TIPOS, ESTADOS_DOC, ESTADOS_ITEM, TIPO_IMP_CONFIG } from '@/lib/constants'
 import { fmtDate } from '@/lib/utils'
 
 const TIPOS_TRANSPORTE = ['Marítimo', 'Aéreo', 'Terrestre Internacional']
@@ -154,7 +154,7 @@ function ItemsPanel({ idEnvio }: { idEnvio: string }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-amber-50/60 border-b border-amber-100">
-                  {['ID Ítem', 'Detalle', 'Shipper', 'Consignee', 'Factura', 'Valor', 'Estado Doc.', 'Estado', 'Destino'].map(h => (
+                  {['ID Ítem', 'Tipo', 'Detalle', 'Shipper', 'Consignee', 'Factura', 'Valor', 'Estado Doc.', 'Estado', 'Destino'].map(h => (
                     <th key={h} className="text-left px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -163,6 +163,11 @@ function ItemsPanel({ idEnvio }: { idEnvio: string }) {
                 {items.map((it, i) => (
                   <tr key={it.id_item} className={`border-b border-amber-50 hover:bg-amber-50/40 transition-colors ${i === items.length - 1 ? 'border-0' : ''}`}>
                     <td className="px-3 py-2 font-semibold text-[#6B1A1A] whitespace-nowrap">{it.id_item}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {(() => { const cfg = TIPO_IMP_CONFIG[it.tipo_importacion]; return cfg
+                        ? <Badge variant={cfg.variant as any} title={cfg.title}>{cfg.label}</Badge>
+                        : <span className="text-gray-300">—</span> })()}
+                    </td>
                     <td className="px-3 py-2 text-gray-700 max-w-[160px] truncate" title={it.detalle}>{it.detalle ?? '-'}</td>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{it.shipper ?? '-'}</td>
                     <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{it.consignee ?? '-'}</td>

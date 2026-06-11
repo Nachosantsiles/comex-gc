@@ -12,6 +12,8 @@ const badgeVariants = cva(
         danger:    'bg-red-50 text-red-700 ring-1 ring-inset ring-red-200/70',
         orange:    'bg-orange-50 text-orange-700 ring-1 ring-inset ring-orange-200/70',
         secondary: 'bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/70',
+        blue:      'bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/70',
+        purple:    'bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200/70',
       },
     },
     defaultVariants: { variant: 'default' },
