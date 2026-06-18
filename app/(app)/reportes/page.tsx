@@ -11,9 +11,6 @@ import {
 } from 'lucide-react'
 import { DateRangeFilter } from '@/components/ui/date-range-filter'
 
-function fmtDate(str: string) {
-  return str ? str.slice(0, 16).replace('T', ' ') : '—'
-}
 function pct(part: number, total: number) {
   if (!total) return 0
   return Math.round((part / total) * 100)

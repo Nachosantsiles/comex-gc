@@ -1,11 +1,8 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
-transpilePackages: ['recharts'],
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
+  transpilePackages: ['recharts'],
+  serverExternalPackages: ['better-sqlite3'],
 };
 
 export default nextConfig;
