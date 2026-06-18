@@ -22,7 +22,7 @@ export default function LoginPage() {
       if (res?.error || res?.ok === false) {
         setError('Email o contraseña incorrectos')
       } else {
-        router.push('/dashboard')
+        router.push('/home')
       }
     } catch (err: any) {
       setLoading(false)

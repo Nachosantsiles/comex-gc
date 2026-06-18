@@ -31,6 +31,17 @@ export const PERMISSIONS = {
   ADMIN_VIEW: 'admin:view',
   ADMIN_MANAGE_USERS: 'admin:manage_users',
   ADMIN_MANAGE_PERMS: 'admin:manage_permissions',
+  COMPRAS_VIEW: 'compras:view',
+  PROVEEDORES_VIEW: 'proveedores:view',
+  DESTINACIONES_ABAST_VIEW: 'destinaciones_abast:view',
+  POLIZAS_VIEW: 'polizas:view',
+  INSUMOS_VIEW: 'insumos:view',
+  KPIS_VIEW: 'kpis:view',
+  PLAN_VIEW: 'plan:view',
+  STOCK_VIEW: 'stock:view',
+  IMPORTACIONES_ABAST_VIEW: 'importaciones_abast:view',
+  IMPORTACIONES_COMUNES_ABAST_VIEW: 'importaciones_comunes_abast:view',
+  ABASTECIMIENTO_DASHBOARD_VIEW: 'abastecimiento_dashboard:view',
 } as const
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS]
@@ -46,6 +57,11 @@ const SUPERVISOR_PERMS: Permission[] = [
   'reportes:view', 'reportes:export', 'reportes:snapshot',
   'totales:view', 'totales:export',
   'calendario:view',
+  'compras:view', 'proveedores:view',
+  'destinaciones_abast:view', 'polizas:view', 'insumos:view',
+  'kpis:view', 'plan:view', 'stock:view',
+  'importaciones_abast:view', 'importaciones_comunes_abast:view',
+  'abastecimiento_dashboard:view',
 ]
 
 const OPERADOR_PERMS: Permission[] = [
@@ -57,6 +73,11 @@ const OPERADOR_PERMS: Permission[] = [
   'detalle:view', 'detalle:edit',
   'documentos:view', 'documentos:upload',
   'calendario:view',
+  'compras:view', 'proveedores:view',
+  'destinaciones_abast:view', 'polizas:view', 'insumos:view',
+  'kpis:view', 'plan:view', 'stock:view',
+  'importaciones_abast:view', 'importaciones_comunes_abast:view',
+  'abastecimiento_dashboard:view',
 ]
 
 const CLIENTE_PERMS: Permission[] = [
@@ -89,6 +110,17 @@ export const ROUTE_PERMISSION_MAP: Record<string, Permission> = {
   '/reportes': 'reportes:view',
   '/documentos': 'documentos:view',
   '/admin': 'admin:view',
+  '/compras': 'compras:view',
+  '/proveedores': 'proveedores:view',
+  '/destinaciones': 'destinaciones_abast:view',
+  '/polizas': 'polizas:view',
+  '/insumos': 'insumos:view',
+  '/kpis': 'kpis:view',
+  '/plan': 'plan:view',
+  '/stock': 'stock:view',
+  '/importaciones-abast': 'importaciones_abast:view',
+  '/importaciones-comunes-abast': 'importaciones_comunes_abast:view',
+  '/abastecimiento-dashboard': 'abastecimiento_dashboard:view',
 }
 
 const ORDERED_ROUTES = [

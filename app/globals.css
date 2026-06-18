@@ -8,6 +8,16 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-olive-50:  #f4f6ec;
+  --color-olive-100: #e8ecda;
+  --color-olive-200: #d1d9b5;
+  --color-olive-300: #b5c287;
+  --color-olive-400: #96a85e;
+  --color-olive-500: #788f42;
+  --color-olive-600: #596b2c;
+  --color-olive-700: #455425;
+  --color-olive-800: #37431e;
+  --color-olive-900: #2f3a1c;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
