@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { loadData, saveData, OrdenCompra, EmpresaOC, nextNumeroOC } from "@/lib/abastecimiento-store";
+import { loadData, saveData, OrdenCompra, EmpresaOC, nextNumeroOC, uid } from "@/lib/abastecimiento-store";
 import FormField, { Input, Select, Textarea } from "@/components/abastecimiento/FormField";
 import { Plus, Trash2, Pencil, X, CheckCircle2, ShoppingCart, FileSpreadsheet, Printer, Building2, Paperclip, ExternalLink, FileText } from "lucide-react";
 import ExportModal, { type ExportOpts } from "@/components/abastecimiento/ExportModal";
@@ -29,7 +29,7 @@ function fmtDate(s: string) {
 const emptyOC = (empresa: EmpresaOC, ocs: OrdenCompra[]): OrdenCompra => {
   const { numero, correlativo } = nextNumeroOC(empresa, ocs);
   return {
-    id: crypto.randomUUID(),
+    id: uid(),
     empresa,
     numero,
     correlativo,

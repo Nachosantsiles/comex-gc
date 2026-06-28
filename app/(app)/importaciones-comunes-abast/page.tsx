@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { loadData, saveData, ImportacionComun } from "@/lib/abastecimiento-store";
+import { loadData, saveData, ImportacionComun, uid } from "@/lib/abastecimiento-store";
 import FormField, { Input, Select, Textarea } from "@/components/abastecimiento/FormField";
 import { Plus, Trash2, Pencil, X, CheckCircle2, Globe } from "lucide-react";
 
@@ -14,7 +14,7 @@ const estadoStyle: Record<string, string> = {
 };
 
 const empty = (): ImportacionComun => ({
-  id: crypto.randomUUID(),
+  id: uid(),
   numero: "",
   proveedor: "",
   paisOrigen: "",

@@ -1,5 +1,20 @@
 "use client";
 
+/**
+ * Genera un ID único. Usa crypto.randomUUID() cuando está disponible
+ * (contextos seguros: HTTPS o localhost) y cae a un fallback manual
+ * cuando no lo está (ej. acceso por IP de red local sobre HTTP), donde
+ * crypto.randomUUID es undefined y rompería la creación de registros.
+ */
+export function uid(): string {
+  try {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+  } catch { /* noop */ }
+  return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+
 export type EmpresaOC = "Seville Cazorla" | "Tomalar";
 
 export interface OrdenCompra {
@@ -222,13 +237,17 @@ export interface InformeData {
 }
 
 const KEY = "informe_abastecimiento_data";
+const API = "/api/abastecimiento";
 
-export function loadData(): InformeData {
-  if (typeof window === "undefined") return defaultData();
-  const raw = localStorage.getItem(KEY);
-  if (!raw) return defaultData();
+// Caché en memoria del estado. Se hidrata una vez al cargar la app (hydrateData)
+// desde el servidor, de modo que loadData()/saveData() siguen siendo síncronos
+// y no hay que tocar la lógica de ninguna página.
+let _cache: InformeData | null = null;
+let _hydrated = false;
+
+// Aplica todas las migraciones de forma idempotente sobre un blob ya parseado.
+function migrate(d: InformeData): InformeData {
   try {
-    const d: InformeData = JSON.parse(raw);
     // Migración: agregar insumosStock si no existe o faltan ítems de material auxiliar
     if (!d.insumosStock || d.insumosStock.length === 0) {
       d.insumosStock = INSUMOS_INICIALES.map((i, idx) => ({ ...i, id: `insumo-${idx}` }));
@@ -315,10 +334,6 @@ export function loadData(): InformeData {
       documentos: (p as any).documentos ?? [],
       empresa:    (p as any).empresa    ?? ("Seville Cazorla" as EmpresaOC),
     }));
-    // Seed: si no hay proveedores, cargar ejemplo
-    if (d.proveedores.length === 0) {
-      d.proveedores = defaultData().proveedores;
-    }
 
     // Migración: pólizas — agregar campos nuevos si faltan
     if (!d.polizas) d.polizas = [];
@@ -340,8 +355,67 @@ export function loadData(): InformeData {
   }
 }
 
+// Parsea un string crudo (o null) y aplica migraciones; cae a defaultData.
+function parseOrDefault(raw: string | null): InformeData {
+  if (!raw) return migrate(defaultData());
+  try {
+    return migrate(JSON.parse(raw));
+  } catch {
+    return migrate(defaultData());
+  }
+}
+
+// Síncrono: devuelve el caché ya hidratado. Si todavía no se hidrató (raro,
+// porque el layout espera la hidratación), cae a localStorage o a defaultData.
+export function loadData(): InformeData {
+  if (_cache) return _cache;
+  if (typeof window === "undefined") return defaultData();
+  _cache = parseOrDefault(localStorage.getItem(KEY));
+  return _cache;
+}
+
+// Guarda en el caché, espeja a localStorage (offline) y persiste en el servidor.
 export function saveData(data: InformeData) {
-  localStorage.setItem(KEY, JSON.stringify(data));
+  _cache = data;
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* quota */ }
+  fetch(API, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  }).catch(() => { /* offline: queda el espejo en localStorage */ });
+}
+
+// Hidrata el caché desde el servidor una sola vez. El layout la espera antes
+// de renderizar las páginas, así loadData() ya tiene los datos del servidor.
+export async function hydrateData(): Promise<void> {
+  if (_hydrated) return;
+  _hydrated = true;
+  if (typeof window === "undefined") return;
+  try {
+    const res = await fetch(API);
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.data) {
+        _cache = migrate(json.data);
+        try { localStorage.setItem(KEY, JSON.stringify(_cache)); } catch { /* quota */ }
+        return;
+      }
+    }
+    // Servidor vacío (primera vez). Para no pisar datos de otra PC, solo subimos
+    // al servidor si ESTE navegador tiene datos reales guardados. Un navegador
+    // vacío usa defaults en memoria sin tocar el servidor.
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const seeded = parseOrDefault(raw);
+      saveData(seeded); // sube los datos reales de este navegador al servidor
+    } else {
+      _cache = migrate(defaultData());
+    }
+  } catch {
+    // Sin conexión al servidor: usar el espejo local.
+    _cache = parseOrDefault(localStorage.getItem(KEY));
+  }
 }
 
 export function vencimientoEfectivo(dest: DestinaciónIT): string {

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import {
   loadData, saveData, Proveedor, Cotizacion, PrecioNegociado, OrdenCompra,
   DocumentoProveedor, NivelDocumento,
-  estadoDocumento, estadoHomologacion, checklistBRCGS, TipoInsumo,
+  estadoDocumento, estadoHomologacion, checklistBRCGS, TipoInsumo, uid,
 } from "@/lib/abastecimiento-store";
 import FormField, { Input, Select, Textarea } from "@/components/abastecimiento/FormField";
 import { ArrowLeft, Plus, Trash2, Star, ShieldCheck, ShieldOff, X, CheckCircle2, Upload, FileText, ExternalLink, AlertTriangle, FolderOpen } from "lucide-react";
@@ -28,7 +28,7 @@ const calcUSD = (precio: number, moneda: string, tc: number): number => {
 };
 
 const emptyCotiz = (): Cotizacion => ({
-  id: crypto.randomUUID(),
+  id: uid(),
   fecha: new Date().toISOString().slice(0, 10),
   insumo: "", unidad: "", cantidad: 0,
   precio: 0, moneda: "ARS", tc: 0, precioUSD: 0,
@@ -36,7 +36,7 @@ const emptyCotiz = (): Cotizacion => ({
 });
 
 const emptyNeg = (): PrecioNegociado => ({
-  id: crypto.randomUUID(),
+  id: uid(),
   fecha: new Date().toISOString().slice(0, 10),
   insumo: "", unidad: "",
   precio: 0, moneda: "ARS", tc: 0, precioUSD: 0,
@@ -157,7 +157,7 @@ export default function ProveedorDetalle({ params }: { params: Promise<{ id: str
   const initChecklist = () => {
     if (!prov) return;
     const base = checklistBRCGS(tipoInsumo);
-    const nuevos: DocumentoProveedor[] = base.map(d => ({ ...d, id: crypto.randomUUID() }));
+    const nuevos: DocumentoProveedor[] = base.map(d => ({ ...d, id: uid() }));
     const merged = [
       ...docs,
       ...nuevos.filter(n => !docs.some(d => d.nombre === n.nombre)),
@@ -178,7 +178,7 @@ export default function ProveedorDetalle({ params }: { params: Promise<{ id: str
   const addDocManual = () => {
     if (!prov) return;
     const nuevo: DocumentoProveedor = {
-      id: crypto.randomUUID(),
+      id: uid(),
       nombre: "Nuevo documento",
       nivel: "obligatorio",
     };

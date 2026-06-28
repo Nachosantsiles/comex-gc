@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadData, saveData, Proveedor, EmpresaOC } from "@/lib/abastecimiento-store";
+import { loadData, saveData, Proveedor, EmpresaOC, uid } from "@/lib/abastecimiento-store";
 import FormField, { Input, Select, Textarea } from "@/components/abastecimiento/FormField";
 import { Plus, Trash2, Pencil, X, CheckCircle2, Building2, Search, Star, ChevronRight, ShieldCheck, ShieldOff } from "lucide-react";
 
@@ -39,7 +39,7 @@ const CATEGORIAS_POR_GRUPO: Record<string, string[]> = {
 const CATEGORIAS_SUGERIDAS = Object.values(CATEGORIAS_POR_GRUPO).flat();
 
 const empty = (): Proveedor => ({
-  id: crypto.randomUUID(),
+  id: uid(),
   codigo: "",
   razonSocial: "",
   empresa: "Seville Cazorla",

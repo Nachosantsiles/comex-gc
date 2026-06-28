@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import { loadData, saveData, AccionPlan } from "@/lib/abastecimiento-store";
+import { loadData, saveData, AccionPlan, uid } from "@/lib/abastecimiento-store";
 import FormField, { Input, Select, Textarea } from "@/components/abastecimiento/FormField";
 import { Plus, Trash2, Pencil } from "lucide-react";
 
 const empty = (): AccionPlan => ({
-  id: crypto.randomUUID(),
+  id: uid(),
   descripcion: "",
   prioridad: "Media",
   responsable: "",
